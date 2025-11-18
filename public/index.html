@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Giải Bài Tập Cấp 2-3</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/main.js"></script>
+  </head>
+  <body>
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="header-left">
+        <img
+          src="/images/bookshelf.jpg"
+          alt="Bookshelf"
+          class="bookshelf logo"
+        />
+      </div>
+
+      <nav class="menu-class" aria-label="Menu lớp">
+        <!-- Thêm data-class để xử lý click trực tiếp -->
+        <a href="#" data-class="Lớp 6">Lớp 6</a>
+        <a href="#" data-class="Lớp 7">Lớp 7</a>
+        <a href="#" data-class="Lớp 8">Lớp 8</a>
+        <a href="#" data-class="Lớp 9">Lớp 9</a>
+        <a href="#" data-class="Lớp 10">Lớp 10</a>
+        <a href="#" data-class="Lớp 11">Lớp 11</a>
+        <a href="#" data-class="Lớp 12">Lớp 12</a>
+        <a href="#" data-class="Giáo án - Đề thi">Giáo án - Đề thi</a>
+      </nav>
+
+      <div class="header-right">
+        <!-- FORM TÌM KIẾM (cải tiến) -->
+        <form class="search-form" id="searchForm">
+          <input
+            class="search-input"
+            name="q"
+            type="search"
+            placeholder="Tìm kiếm môn, tài liệu..."
+            aria-label="Tìm kiếm"
+          />
+          <button class="search-btn" type="submit" aria-label="Tìm">
+            <span class="search-icon">🔍</span>
+          </button>
+        </form>
+
+        <div class="user-area">
+          <img
+            src="/images/avatar.png"
+            alt="Avatar"
+            class="avatar"
+            id="avatarBtn"
+            title="Tài khoản"
+          />
+          <div class="dropdown" id="userDropdown" aria-hidden="true">
+            <div id="userNotLogged">
+              <a href="#" class="dropdown-item" id="openLogin">Đăng nhập</a>
+              <a href="#" class="dropdown-item">Đăng ký</a>
+            </div>
+            <div id="userLogged" style="display: none">
+              <div class="dropdown-item" id="userNameDisplay"></div>
+              <a href="#" class="dropdown-item" id="logoutBtn">Đăng xuất</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- INLINE LOGIN (ẩn mặc định) -->
+    <section id="inlineLogin" class="inline-login hidden" aria-hidden="true">
+      <h2>Đăng nhập</h2>
+      <form id="inlineLoginForm" class="inline-login-form">
+        <label
+          >Username
+          <input type="text" name="username" required />
+        </label>
+        <label
+          >Password
+          <input type="password" name="password" required />
+        </label>
+        <div class="inline-actions">
+          <button type="submit" class="btn">Đăng nhập</button>
+          <button type="button" class="btn btn-ghost" id="inlineCancel">
+            Hủy
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- SERVICES -->
+    <div class="service-area">
+      <div class="service-title">DỊCH VỤ CỦA CHÚNG TÔI</div>
+      <div class="services">
+        <div class="service-box">
+          <div class="icon">📝</div>
+          <div class="name">Giải bài tập SGK & SBT</div>
+        </div>
+        <div class="service-box">
+          <div class="icon">📚</div>
+          <div class="name">Sách</div>
+        </div>
+        <div class="service-box">
+          <div class="icon">🎓</div>
+          <div class="name">Khóa học</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORY / LỚP (vẫn giữ để tham khảo) -->
+    <div class="category-area" id="categoryArea">
+      <div class="category-title">Danh mục giải bài tập và soạn bài</div>
+      <div class="category-intro">
+        Click vào nút Lớp ở menu trên để xem các môn.
+      </div>
+
+      <div class="accordion" id="classAccordion">
+        <!-- các accordion-item giữ để hiển thị tóm tắt nếu cần -->
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 6" type="button">
+            <span>Lớp 6</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 6...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 7" type="button">
+            <span>Lớp 7</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 7...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 8" type="button">
+            <span>Lớp 8</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 8...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 9" type="button">
+            <span>Lớp 9</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 9...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 10" type="button">
+            <span>Lớp 10</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 10...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 11" type="button">
+            <span>Lớp 11</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 11...</p>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <button class="accordion-button" data-class="Lớp 12" type="button">
+            <span>Lớp 12</span><span class="arrow">&#9654;</span>
+          </button>
+          <div class="accordion-panel">
+            <p>Nội dung tóm tắt cho lớp 12...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBJECTS VIEW -->
+    <div id="subjectsView" class="subjects-view hidden" aria-hidden="true">
+      <div class="subjects-header">
+        <button id="backToClasses" class="btn btn-ghost">← Quay lại</button>
+        <h2 id="subjectsTitle">Các môn</h2>
+      </div>
+      <div id="subjectsGrid" class="subjects-grid"></div>
+    </div>
+
+    <script>
+      // map lớp -> môn (ví dụ tĩnh)
+      const classSubjects = {
+        "Lớp 6": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Khoa học tự nhiên",
+          "Lịch sử",
+          "Địa lý",
+        ],
+        "Lớp 7": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý cơ bản",
+          "Sinh học",
+          "Công nghệ",
+        ],
+        "Lớp 8": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Lịch sử",
+        ],
+        "Lớp 9": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Sinh học",
+        ],
+        "Lớp 10": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Sinh học",
+        ],
+        "Lớp 11": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Sinh học",
+        ],
+        "Lớp 12": [
+          "Toán",
+          "Ngữ văn",
+          "Tiếng Anh",
+          "Vật lý",
+          "Hóa học",
+          "Sinh học",
+        ],
+        "Giáo án - Đề thi": ["Đề thi THCS", "Đề thi THPT", "Giáo án mẫu"],
+      };
+
+      // Hàm render grid môn
+      function showSubjects(className) {
+        const subjects = classSubjects[className] || [];
+        const grid = document.getElementById("subjectsGrid");
+        const title = document.getElementById("subjectsTitle");
+        grid.innerHTML = "";
+        title.textContent = `Các môn của ${className}`;
+        if (subjects.length === 0) {
+          grid.innerHTML = "<p>Chưa có môn cho lớp này.</p>";
+        } else {
+          subjects.forEach((sub) => {
+            const card = document.createElement("div");
+            card.className = "subject-card";
+            card.innerHTML = `
+            <div class="subject-name">${sub}</div>
+            <button class="btn show-material" data-sub="${sub}">Xem tài liệu</button>
+          `;
+            grid.appendChild(card);
+          });
+        }
+        document.getElementById("categoryArea").classList.add("hidden");
+        document.getElementById("subjectsView").classList.remove("hidden");
+        document
+          .getElementById("subjectsView")
+          .setAttribute("aria-hidden", "false");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function hideSubjects() {
+        document.getElementById("subjectsView").classList.add("hidden");
+        document
+          .getElementById("subjectsView")
+          .setAttribute("aria-hidden", "true");
+        document.getElementById("categoryArea").classList.remove("hidden");
+      }
+
+      // Gắn event cho menu-class a[data-class] (menu trên cùng)
+      document.querySelectorAll(".menu-class a[data-class]").forEach((a) => {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          const cls = this.dataset.class;
+          showSubjects(cls);
+        });
+      });
+
+      // Gắn event cho accordion-button (nếu muốn click ở phần tóm tắt cũng mở môn)
+      document.querySelectorAll(".accordion-button").forEach((btn) => {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          const cls = this.dataset.class;
+          showSubjects(cls);
+        });
+      });
+
+      document
+        .getElementById("backToClasses")
+        .addEventListener("click", hideSubjects);
+
+      // xử lý click "Xem tài liệu" (demo)
+      document.addEventListener("click", (e) => {
+        if (e.target.matches(".show-material")) {
+          alert("Bạn chọn môn: " + e.target.dataset.sub);
+        }
+      });
+
+      // SEARCH: gọi API /api/search?q=...
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const q = new FormData(e.target).get("q") || "";
+          try {
+            const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+            const data = await res.json();
+            // tạm hiển thị kết quả đơn giản (bạn có thể render chi tiết)
+            alert(
+              "Kết quả: " +
+                (data.results && data.results.length
+                  ? data.results.map((r) => r.title).join(", ")
+                  : "Không có"),
+            );
+          } catch (err) {
+            alert("Lỗi tìm kiếm");
+          }
+        });
+
+      // Inline login: open from dropdown
+      document.getElementById("openLogin").addEventListener("click", (e) => {
+        e.preventDefault();
+        const inline = document.getElementById("inlineLogin");
+        inline.classList.remove("hidden");
+        inline.scrollIntoView({ behavior: "smooth", block: "center" });
+        inline.querySelector('input[name="username"]').focus();
+        document.getElementById("userDropdown").classList.remove("open");
+      });
+      document.getElementById("inlineCancel").addEventListener("click", () => {
+        document.getElementById("inlineLogin").classList.add("hidden");
+      });
+
+      // Load user (giữ nguyên) - thực hiện fetch /api/me
+      async function loadUser() {
+        try {
+          const r = await fetch("/api/me");
+          const j = await r.json();
+          const logged = j.user;
+          const userNot = document.getElementById("userNotLogged");
+          const userLogged = document.getElementById("userLogged");
+          const userNameDisplay = document.getElementById("userNameDisplay");
+          if (logged) {
+            userNot.style.display = "none";
+            userLogged.style.display = "block";
+            userNameDisplay.textContent = logged.displayName || logged.username;
+          } else {
+            userNot.style.display = "block";
+            userLogged.style.display = "none";
+          }
+        } catch (err) {}
+      }
+      loadUser();
+    </script>
+  </body>
+</html>
