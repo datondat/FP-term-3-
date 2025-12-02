@@ -1,0 +1,47 @@
+-- Seed data cho "fp"
+INSERT INTO classes (name) VALUES
+('Lớp 6'), ('Lớp 7'), ('Lớp 8'), ('Lớp 9'), ('Lớp 10'), ('Lớp 11'), ('Lớp 12')
+ON CONFLICT (name) DO NOTHING;
+
+-- Lớp 6
+INSERT INTO subjects (class_id, name, slug)
+SELECT c.id, s.name, lower(regexp_replace(s.name, '\s+', '-', 'g'))
+FROM classes c, (VALUES ('Toán'),('Ngữ văn'),('Tiếng Anh'),('Khoa học tự nhiên'),('Lịch sử'),('Địa lý')) AS s(name)
+WHERE c.name='Lớp 6'
+ON CONFLICT (class_id, name) DO NOTHING;
+
+-- Lớp 7
+INSERT INTO subjects (class_id, name, slug)
+SELECT c.id, s.name, lower(regexp_replace(s.name, '\s+', '-', 'g'))
+FROM classes c, (VALUES ('Toán'),('Ngữ văn'),('Tiếng Anh'),('Vật lý cơ bản'),('Sinh học'),('Công nghệ')) AS s(name)
+WHERE c.name='Lớp 7'
+ON CONFLICT (class_id, name) DO NOTHING;
+
+-- Lớp 8
+INSERT INTO subjects (class_id, name, slug)
+SELECT c.id, s.name, lower(regexp_replace(s.name, '\s+', '-', 'g'))
+FROM classes c, (VALUES ('Toán'),('Ngữ văn'),('Tiếng Anh'),('Vật lý'),('Hóa học'),('Lịch sử')) AS s(name)
+WHERE c.name='Lớp 8'
+ON CONFLICT (class_id, name) DO NOTHING;
+
+-- Lớp 9
+INSERT INTO subjects (class_id, name, slug)
+SELECT c.id, s.name, lower(regexp_replace(s.name, '\s+', '-', 'g'))
+FROM classes c, (VALUES ('Toán'),('Ngữ văn'),('Tiếng Anh'),('Vật lý'),('Hóa học'),('Sinh học')) AS s(name)
+WHERE c.name='Lớp 9'
+ON CONFLICT (class_id, name) DO NOTHING;
+
+-- Lớp 10..12
+INSERT INTO subjects (class_id, name, slug)
+SELECT c.id, s.name, lower(regexp_replace(s.name, '\s+', '-', 'g'))
+FROM classes c, (VALUES ('Toán'),('Ngữ văn'),('Tiếng Anh'),('Vật lý'),('Hóa học'),('Sinh học')) AS s(name)
+WHERE c.name IN ('Lớp 10','Lớp 11','Lớp 12')
+ON CONFLICT (class_id, name) DO NOTHING;
+
+-- materials demo cho Lớp 6 - Toán
+INSERT INTO materials (subject_id, title, content, url)
+SELECT s.id, 'Bài mẫu: Phép cộng', 'Ví dụ nội dung: cách giải phép cộng cơ bản', NULL
+FROM subjects s JOIN classes c ON s.class_id = c.id
+WHERE c.name='Lớp 6' AND s.name='Toán'
+LIMIT 1
+ON CONFLICT DO NOTHING;
