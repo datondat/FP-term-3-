@@ -256,6 +256,3 @@ app.use((req, res, next) => {
 
 const port = parseInt(process.env.PORT, 10) || 5001;
 app.listen(port, () => console.log(`Server running on ${port} (pid=${process.pid})`));
-// trong server.js
-const searchRouter = require('./src/routes/search');
-app.use('/api', searchRouter); // /api/search, /api/suggest, /api/reindex

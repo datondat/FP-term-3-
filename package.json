@@ -13,6 +13,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-session": "^1.17.3",
+    "fuse.js": "^7.1.0",
     "googleapis": "^166.0.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
