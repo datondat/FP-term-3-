@@ -1,0 +1,79 @@
+/* Styles for textbooks modal and list (small & responsive) */
+
+.textbooks-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.textbooks-modal.open { display: flex; }
+
+.textbooks-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12,16,20,0.45);
+  backdrop-filter: blur(2px);
+}
+
+.textbooks-modal-panel {
+  position: relative;
+  width: 92%;
+  max-width: 880px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(6,12,24,0.3);
+  z-index: 2;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.textbooks-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.textbooks-modal-header h3 { margin: 0; font-size: 16px; color: #183049; }
+.textbooks-close {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #666;
+}
+
+.textbooks-modal-body {
+  padding: 14px 18px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.tb-list { display: grid; gap: 12px; }
+.tb-item {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fffaf2;
+  border: 1px solid #fff0e0;
+}
+.tb-title { margin: 0 0 6px; font-size: 15px; color: #112; }
+.tb-meta { font-size: 13px; color: #6b6b6b; margin-bottom: 8px; }
+.tb-actions { display:flex; gap:8px; }
+
+.textbooks-modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid #f0f0f0;
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+@media (max-width: 720px) {
+  .textbooks-modal-panel { width: 96%; max-width: 680px; }
+  .textbooks-modal-body { padding: 12px; max-height: 65vh; }
+}

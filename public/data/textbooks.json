@@ -1,0 +1,457 @@
+{
+  "Lớp 6": {
+    "Toán": [
+      {
+        "title": "Toán 6 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-6-1/1/24/0/"
+      },
+      {
+        "title": "Toán 6 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-6-2/1/35/0/"
+      },
+      {
+        "title": "SBT Toán 6 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-6-tap-1/5/52/0/"
+      },
+      {
+        "title": "SBT Toán 6 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-6-tap-2/5/178/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 6 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-6-1/1/22/0/"
+      },
+      {
+        "title": "Ngữ văn 6 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-6-2/1/23/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 6 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-6-tap-1/5/50/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 6 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-6-tap-2/5/174/0/"
+      }
+    ],
+    "Tiếng Anh": [
+      {
+        "title": "Tiếng Anh 6 - Student's Book",
+        "publisher": "NXB Giáo dục Việt Nam",
+        "format": "PDF",
+        "link": "https://www.hoc10.vn/sach-giao-khoa/tieng-anh-6"
+      }
+    ],
+    "Khoa học tự nhiên": [],
+    "Lịch sử": [],
+    "Địa lý": [],
+    "Tin học": []
+  },
+
+  "Lớp 7": {
+    "Toán": [
+      {
+        "title": "Toán 7 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-7-tap-1/1/141/0/"
+      },
+      {
+        "title": "Toán 7 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-7-tap-2/1/142/0/"
+      },
+      {
+        "title": "SBT Toán 7 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-7-tap-1/5/284/0/"
+      },
+      {
+        "title": "SBT Toán 7 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-7-tap-2/5/285/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 7 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-7-tap-1/1/139/0/"
+      },
+      {
+        "title": "Ngữ văn 7 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-7-tap-2/1/140/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 7 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-7-tap-1/5/282/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 7 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-7-tap-2/5/283/0/"
+      }
+    ],
+    "Tiếng Anh": [],
+    "Vật lý": [],
+    "Sinh học": [],
+    "Công nghệ": [],
+    "Tin học": []
+  },
+
+  "Lớp 8": {
+    "Toán": [
+      {
+        "title": "Toán 8 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-8-tap-1/1/417/0/"
+      },
+      {
+        "title": "Toán 8 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-8-tap-2/1/419/0/"
+      },
+      {
+        "title": "SBT Toán 8 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-8-tap-1/5/425/0/"
+      },
+      {
+        "title": "SBT Toán 8 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-8-tap-2/5/427/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 8 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-8-tap-1/1/412/0/"
+      },
+      {
+        "title": "Ngữ văn 8 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-8-tap-2/1/414/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 8 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-8-tap-1/5/422/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 8 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-8-tap-2/5/423/0/"
+      }
+    ],
+    "Tiếng Anh": [],
+    "Vật lý": [],
+    "Hóa học": [],
+    "Lịch sử": [],
+    "Địa lý": []
+  },
+
+  "Lớp 9": {
+    "Toán": [
+      {
+        "title": "Toán 9 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-9-tap-1/1/699/0/"
+      },
+      {
+        "title": "Toán 9 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-9-tap-2/1/700/0/"
+      },
+      {
+        "title": "SBT Toán 9 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-9-tap-1/5/715/0/"
+      },
+      {
+        "title": "SBT Toán 9 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-9-tap-2/5/716/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 9 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-9-tap-1/1/697/0/"
+      },
+      {
+        "title": "Ngữ văn 9 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-9-tap-2/1/698/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 9 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-9-tap-1/5/713/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 9 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-9-tap-2/5/714/0/"
+      }
+    ],
+    "Vật lý": [],
+    "Hóa học": [],
+    "Sinh học": []
+  },
+
+  "Lớp 10": {
+    "Toán": [
+      {
+        "title": "Toán 10 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-10-tap-1/1/155/0/"
+      },
+      {
+        "title": "Toán 10 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-10-tap-2/1/156/0/"
+      },
+      {
+        "title": "Chuyên đề Toán 10",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/chuyen-de-hoc-tap-toan-10/1/200/0/"
+      },
+      {
+        "title": "SBT Toán 10 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-10-tap-1/5/286/0/"
+      },
+      {
+        "title": "SBT Toán 10 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-10-tap-2/5/287/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 10 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-10-tap-1/1/153/0/"
+      },
+      {
+        "title": "Ngữ văn 10 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-10-tap-2/1/154/0/"
+      },
+      {
+        "title": "Chuyên đề Ngữ văn 10",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/chuyen-de-hoc-tap-ngu-van-10/1/199/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 10 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-10-tap-1/5/288/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 10 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-10-tap-2/5/289/0/"
+      }
+    ],
+    "Vật lý": [],
+    "Hóa học": [],
+    "Sinh học": []
+  },
+
+  "Lớp 11": {
+    "Toán": [
+      {
+        "title": "Toán 11 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-11-tap-1/1/446/0/"
+      },
+      {
+        "title": "Toán 11 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-11-tap-2/1/447/0/"
+      },
+      {
+        "title": "CD Toán 11",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/cd-toan-11/1/396/0/"
+      },
+      {
+        "title": "SBT Toán 11 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-11-tap-1/5/433/0/"
+      },
+      {
+        "title": "SBT Toán 11 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-11-tap-2/5/435/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 11 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-11-tap-1/1/444/0/"
+      },
+      {
+        "title": "Ngữ văn 11 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-11-tap-2/1/445/0/"
+      },
+      {
+        "title": "Chuyên đề Ngữ văn 11",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/cd-ngu-van-11/1/395/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 11 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-11-tap-1/5/430/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 11 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-11-tap-2/5/432/0/"
+      }
+    ],
+    "Vật lý": [],
+    "Hóa học": [],
+    "Sinh học": [],
+    "Tin học": []
+  },
+
+  "Lớp 12": {
+    "Toán": [
+      {
+        "title": "Toán 12 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-12-tap-1/1/721/0/"
+      },
+      {
+        "title": "Toán 12 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/toan-12-tap-2/1/722/0/"
+      },
+      {
+        "title": "Chuyên đề Toán 12",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/chuyen-de-hoc-tap-toan-12/1/741/0/"
+      },
+      {
+        "title": "SBT Toán 12 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-12-tap-1/5/754/0/"
+      },
+      {
+        "title": "SBT Toán 12 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-toan-12-tap-2/5/755/0/"
+      }
+    ],
+    "Ngữ văn": [
+      {
+        "title": "Ngữ văn 12 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-12-tap-1/1/719/0/"
+      },
+      {
+        "title": "Ngữ văn 12 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/ngu-van-12-tap-2/1/720/0/"
+      },
+      {
+        "title": "Chuyên đề Ngữ văn 12",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/chuyen-de-hoc-tap-ngu-van-12/1/740/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 12 - Tập 1",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-12-tap-1/5/752/0/"
+      },
+      {
+        "title": "SBT Ngữ văn 12 - Tập 2",
+        "publisher": "hoc10.vn",
+        "format": "HTML",
+        "link": "https://www.hoc10.vn/doc-sach/sbt-ngu-van-12-tap-2/5/753/0/"
+      }
+    ],
+    "Vật lý": [],
+    "Hóa học": [],
+    "Sinh học": []
+  }
+}

@@ -5,21 +5,18 @@
     <title>Giải Bài Tập Cấp 2-3</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="/styles.css" />
-    <script src="/main.js"></script>
+    <link rel="stylesheet" href="/textbooks.css" />
+    <script src="/main.js" defer></script>
+    <script src="/textbooks.js" defer></script>
   </head>
   <body>
     <!-- TOP HEADER -->
     <header class="top-header">
       <div class="header-left">
-        <img
-          src="/images/bookshelf.jpg"
-          alt="Bookshelf"
-          class="bookshelf logo"
-        />
+        <img src="/images/bookshelf.jpg" alt="Bookshelf" class="bookshelf logo" />
       </div>
 
       <nav class="menu-class" aria-label="Menu lớp">
-        <!-- Thêm data-class để xử lý click trực tiếp -->
         <a href="#" data-class="Lớp 6">Lớp 6</a>
         <a href="#" data-class="Lớp 7">Lớp 7</a>
         <a href="#" data-class="Lớp 8">Lớp 8</a>
@@ -28,31 +25,16 @@
         <a href="#" data-class="Lớp 11">Lớp 11</a>
         <a href="#" data-class="Lớp 12">Lớp 12</a>
         <a href="#" data-class="Giáo án - Đề thi">Giáo án - Đề thi</a>
+        <a href="/upload-assignment.html" class="menu-upload">Upload</a>
       </nav>
 
       <div class="header-right">
-        <!-- FORM TÌM KIẾM (cải tiến) -->
         <form class="search-form" id="searchForm">
-          <input
-            class="search-input"
-            name="q"
-            type="search"
-            placeholder="Tìm kiếm môn, tài liệu..."
-            aria-label="Tìm kiếm"
-          />
-          <button class="search-btn" type="submit" aria-label="Tìm">
-            <span class="search-icon">🔍</span>
-          </button>
+          <input class="search-input" name="q" type="search" placeholder="Tìm kiếm môn, tài liệu..." aria-label="Tìm kiếm" />
+          <button class="search-btn" type="submit" aria-label="Tìm">🔍</button>
         </form>
-
         <div class="user-area">
-          <img
-            src="/images/avatar.png"
-            alt="Avatar"
-            class="avatar"
-            id="avatarBtn"
-            title="Tài khoản"
-          />
+          <img src="/images/avatar.png" alt="Avatar" class="avatar" id="avatarBtn" title="Tài khoản" />
           <div class="dropdown" id="userDropdown" aria-hidden="true">
             <div id="userNotLogged">
               <a href="#" class="dropdown-item" id="openLogin">Đăng nhập</a>
@@ -67,186 +49,119 @@
       </div>
     </header>
 
-    <!-- INLINE LOGIN (ẩn mặc định) -->
-    <section id="inlineLogin" class="inline-login hidden" aria-hidden="true">
-      <h2>Đăng nhập</h2>
-      <form id="inlineLoginForm" class="inline-login-form">
-        <label
-          >Username
-          <input type="text" name="username" required />
-        </label>
-        <label
-          >Password
-          <input type="password" name="password" required />
-        </label>
-        <div class="inline-actions">
-          <button type="submit" class="btn">Đăng nhập</button>
-          <button type="button" class="btn btn-ghost" id="inlineCancel">
-            Hủy
-          </button>
-        </div>
-      </form>
-    </section>
+    <!-- MAIN CONTENT (below header) -->
+    <main id="mainContent">
+      <!-- INLINE LOGIN (ẩn mặc định) -->
+      <section id="inlineLogin" class="inline-login hidden" aria-hidden="true">
+        <h2>Đăng nhập</h2>
+        <form id="inlineLoginForm" class="inline-login-form">
+          <label>Username <input type="text" name="username" required /></label>
+          <label>Password <input type="password" name="password" required /></label>
+          <div class="inline-actions">
+            <button type="submit" class="btn">Đăng nhập</button>
+            <button type="button" class="btn btn-ghost" id="inlineCancel">Hủy</button>
+          </div>
+        </form>
+      </section>
 
-    <!-- SERVICES -->
-    <div class="service-area">
-      <div class="service-title">WEB HỌC TẬP</div>
-      <div class="services">
-        <div class="service-box">
-          <div class="icon">📝</div>
-          <div class="name">Giải bài tập SGK & SBT</div>
-        </div>
-        <div class="service-box">
-          <div class="icon">📚</div>
-          <div class="name">Sách</div>
-        </div>
-        <div class="service-box">
-          <div class="icon">🎓</div>
-          <div class="name">Khóa học</div>
+      <!-- SERVICES -->
+      <div class="service-area" id="serviceArea">
+        <div class="service-title">WEB HỌC TẬP</div>
+        <div class="services">
+          <div class="service-box"><div class="icon">📝</div><div class="name">Giải bài tập SGK & SBT</div></div>
+          <div class="service-box"><div class="icon">📚</div><div class="name">Sách</div></div>
+          <div class="service-box"><div class="icon">🎓</div><div class="name">Khóa học</div></div>
+          <a href="/upload-assignment.html" class="service-box service-box-upload" aria-label="Upload tài liệu"><div class="icon">⬆️</div><div class="name">Upload tài liệu</div></a>
         </div>
       </div>
-    </div>
 
-    <!-- CATEGORY / LỚP (vẫn giữ để tham khảo) -->
-    <div class="category-area" id="categoryArea">
-      <div class="category-title">Danh mục giải bài tập và soạn bài</div>
-      <div class="category-intro">
-        Click vào nút Lớp ở menu trên để xem các môn.
-      </div>
+      <!-- CATEGORY / ACCORDION (all classes listed) -->
+      <div class="category-area" id="categoryArea">
+        <div class="category-title">Danh mục giải bài tập và soạn bài</div>
+        <div class="category-intro">Click vào nút Lớp ở menu trên để xem các môn.</div>
 
-      <div class="accordion" id="classAccordion">
-        <!-- các accordion-item giữ để hiển thị tóm tắt nếu cần -->
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 6" type="button">
-            <span>Lớp 6</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 6...</p>
+        <div class="accordion" id="classAccordion">
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 6" type="button"><span>Lớp 6</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 6. Bao gồm SGK, SBT, bài tập và hướng dẫn.</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 7" type="button">
-            <span>Lớp 7</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 7...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 7" type="button"><span>Lớp 7</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 7. Bài tập, sách và tài liệu tham khảo.</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 8" type="button">
-            <span>Lớp 8</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 8...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 8" type="button"><span>Lớp 8</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 8. Gồm Toán, Vật lý, Hóa học, Ngữ văn...</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 9" type="button">
-            <span>Lớp 9</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 9...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 9" type="button"><span>Lớp 9</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 9. Tài liệu ôn thi và bài giải mẫu.</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 10" type="button">
-            <span>Lớp 10</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 10...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 10" type="button"><span>Lớp 10</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 10. Thích hợp cho năm học THPT.</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 11" type="button">
-            <span>Lớp 11</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 11...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 11" type="button"><span>Lớp 11</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 11. Gồm bài giảng, bài tập và đề kiểm tra.</p></div>
           </div>
-        </div>
-        <div class="accordion-item">
-          <button class="accordion-button" data-class="Lớp 12" type="button">
-            <span>Lớp 12</span><span class="arrow">&#9654;</span>
-          </button>
-          <div class="accordion-panel">
-            <p>Nội dung tóm tắt cho lớp 12...</p>
+
+          <div class="accordion-item">
+            <button class="accordion-button" data-class="Lớp 12" type="button"><span>Lớp 12</span><span class="arrow">&#9654;</span></button>
+            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 12. Tài liệu ôn thi đại học và đề thi thử.</p></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- SUBJECTS VIEW -->
-    <div id="subjectsView" class="subjects-view hidden" aria-hidden="true">
-      <div class="subjects-header">
-        <button id="backToClasses" class="btn btn-ghost">← Quay lại</button>
-        <h2 id="subjectsTitle">Các môn</h2>
+      <!-- SUBJECTS VIEW (list of subjects for a chosen class) -->
+      <div id="subjectsView" class="subjects-view hidden" aria-hidden="true">
+        <div class="subjects-header">
+          <button id="backToClasses" class="btn btn-ghost">← Quay lại</button>
+          <h2 id="subjectsTitle">Các môn</h2>
+        </div>
+        <div id="subjectsGrid" class="subjects-grid"></div>
       </div>
-      <div id="subjectsGrid" class="subjects-grid"></div>
-    </div>
+
+      <!-- RESOURCES VIEW: when user clicks a subject, hide everything under header and show this -->
+      <div id="resourcesView" class="resources-view hidden" aria-hidden="true">
+        <div class="resources-header">
+          <button id="resourcesBack" class="btn btn-ghost">← Quay lại</button>
+          <h2 id="resourcesTitle">Tài liệu</h2>
+        </div>
+        <div id="resourcesBody" class="resources-body">
+          <!-- textbooks.js can render HTML here (uses same markup as textbooks page) -->
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">© FP-term-3</div>
+    </footer>
 
     <script>
-      // map lớp -> môn (ví dụ tĩnh)
+      // full class -> subjects map
       const classSubjects = {
-        "Lớp 6": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Khoa học tự nhiên",
-          "Lịch sử",
-          "Địa lý",
-        ],
-        "Lớp 7": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý cơ bản",
-          "Sinh học",
-          "Công nghệ",
-        ],
-        "Lớp 8": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý",
-          "Hóa học",
-          "Lịch sử",
-        ],
-        "Lớp 9": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý",
-          "Hóa học",
-          "Sinh học",
-        ],
-        "Lớp 10": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý",
-          "Hóa học",
-          "Sinh học",
-        ],
-        "Lớp 11": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý",
-          "Hóa học",
-          "Sinh học",
-        ],
-        "Lớp 12": [
-          "Toán",
-          "Ngữ văn",
-          "Tiếng Anh",
-          "Vật lý",
-          "Hóa học",
-          "Sinh học",
-        ],
-        "Giáo án - Đề thi": ["Đề thi THCS", "Đề thi THPT", "Giáo án mẫu"],
+        "Lớp 6": ["Toán","Ngữ văn","Tiếng Anh","Khoa học tự nhiên","Lịch sử","Địa lý","Tin học"],
+        "Lớp 7": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Sinh học","Công nghệ","Tin học"],
+        "Lớp 8": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Lịch sử","Địa lý"],
+        "Lớp 9": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Công nghệ"],
+        "Lớp 10": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","GDCD"],
+        "Lớp 11": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Tin học"],
+        "Lớp 12": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử"],
+        "Giáo án - Đề thi": ["Đề thi THCS","Đề thi THPT","Giáo án mẫu"]
       };
 
-      // Hàm render grid môn
+      const serviceArea = document.getElementById('serviceArea');
+      const categoryArea = document.getElementById('categoryArea');
+      const subjectsView = document.getElementById('subjectsView');
+      const resourcesView = document.getElementById('resourcesView');
+
+      // show subjects for a class
       function showSubjects(className) {
         const subjects = classSubjects[className] || [];
         const grid = document.getElementById("subjectsGrid");
@@ -259,30 +174,64 @@
           subjects.forEach((sub) => {
             const card = document.createElement("div");
             card.className = "subject-card";
+            // When clicking the subject card, show resources inline (no modal)
             card.innerHTML = `
-            <div class="subject-name">${sub}</div>
-            <button class="btn show-material" data-sub="${sub}">Xem tài liệu</button>
-          `;
+              <div class="subject-name">${sub}</div>
+              <div style="display:flex;gap:8px;justify-content:center">
+                <button class="btn view-subject inline" data-sub="${sub}" data-class="${className}">Xem sách</button>
+              </div>
+            `;
             grid.appendChild(card);
           });
         }
-        document.getElementById("categoryArea").classList.add("hidden");
-        document.getElementById("subjectsView").classList.remove("hidden");
-        document
-          .getElementById("subjectsView")
-          .setAttribute("aria-hidden", "false");
+
+        // show subjects view, hide other main content parts (except header)
+        serviceArea.classList.add('hidden');
+        categoryArea.classList.add('hidden');
+        resourcesView.classList.add('hidden');
+        subjectsView.classList.remove('hidden');
+        subjectsView.setAttribute("aria-hidden","false");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
       function hideSubjects() {
-        document.getElementById("subjectsView").classList.add("hidden");
-        document
-          .getElementById("subjectsView")
-          .setAttribute("aria-hidden", "true");
-        document.getElementById("categoryArea").classList.remove("hidden");
+        subjectsView.classList.add('hidden');
+        subjectsView.setAttribute('aria-hidden','true');
+        serviceArea.classList.remove('hidden');
+        categoryArea.classList.remove('hidden');
       }
 
-      // Gắn event cho menu-class a[data-class] (menu trên cùng)
+      // show resources inline for a given class+subject
+      async function showResourcesInline(className, subject) {
+        // hide everything under header
+        serviceArea.classList.add('hidden');
+        categoryArea.classList.add('hidden');
+        subjectsView.classList.add('hidden');
+
+        const resourcesBody = document.getElementById('resourcesBody');
+        const resourcesTitle = document.getElementById('resourcesTitle');
+        resourcesTitle.textContent = `${subject} — ${className}`;
+
+        // load textbooks data via Textbooks.loadData() (textbooks.js exposes this)
+        try {
+          const data = await window.Textbooks.loadData();
+          const books = (data[className] || {})[subject] || [];
+          // render HTML using the same helper exposed by textbooks.js
+          const html = window.Textbooks.renderBooksListHTML
+            ? window.Textbooks.renderBooksListHTML(className, subject, books)
+            : (books.length ? books.map(b => `<div>${b.title} — <a href="${b.link}" target="_blank">Xem</a></div>`).join('') : '<div class="muted">Chưa có sách.</div>');
+
+          resourcesBody.innerHTML = html;
+        } catch (err) {
+          resourcesBody.innerHTML = '<div class="muted">Lỗi tải dữ liệu sách.</div>';
+        }
+
+        resourcesView.classList.remove('hidden');
+        resourcesView.setAttribute('aria-hidden','false');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // attach top menu handlers
       document.querySelectorAll(".menu-class a[data-class]").forEach((a) => {
         a.addEventListener("click", function (e) {
           e.preventDefault();
@@ -291,7 +240,7 @@
         });
       });
 
-      // Gắn event cho accordion-button (nếu muốn click ở phần tóm tắt cũng mở môn)
+      // accordion buttons also show subjects
       document.querySelectorAll(".accordion-button").forEach((btn) => {
         btn.addEventListener("click", function (e) {
           e.preventDefault();
@@ -300,39 +249,42 @@
         });
       });
 
-      document
-        .getElementById("backToClasses")
-        .addEventListener("click", hideSubjects);
-
-      // xử lý click "Xem tài liệu" (demo)
-      document.addEventListener("click", (e) => {
-        if (e.target.matches(".show-material")) {
-          alert("Bạn chọn môn: " + e.target.dataset.sub);
-        }
+      // delegate clicks for inline "Xem sách" buttons in subjects grid
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest && e.target.closest('.view-subject.inline');
+        if (!btn) return;
+        const sub = btn.dataset.sub;
+        const cls = btn.dataset.class;
+        showResourcesInline(cls, sub);
       });
 
-      // SEARCH: gọi API /api/search?q=...
-      document
-        .getElementById("searchForm")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const q = new FormData(e.target).get("q") || "";
-          try {
-            const res = await fetch("/api/search?q=" + encodeURIComponent(q));
-            const data = await res.json();
-            // tạm hiển thị kết quả đơn giản (bạn có thể render chi tiết)
-            alert(
-              "Kết quả: " +
-                (data.results && data.results.length
-                  ? data.results.map((r) => r.title).join(", ")
-                  : "Không có"),
-            );
-          } catch (err) {
-            alert("Lỗi tìm kiếm");
-          }
-        });
+      // resources back button
+      document.getElementById('resourcesBack').addEventListener('click', function () {
+        // go back to subjects list if it was visible previously; otherwise restore main content
+        resourcesView.classList.add('hidden');
+        resourcesView.setAttribute('aria-hidden','true');
+        // show category & services (user can click class again)
+        serviceArea.classList.remove('hidden');
+        categoryArea.classList.remove('hidden');
+        // clear body
+        document.getElementById('resourcesBody').innerHTML = '';
+      });
 
-      // Inline login: open from dropdown
+      // subjects back button returns to main category view
+      document.getElementById('backToClasses').addEventListener('click', hideSubjects);
+
+      // search handler (unchanged)
+      document.getElementById("searchForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const q = new FormData(e.target).get("q") || "";
+        try {
+          const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+          const data = await res.json();
+          alert("Kết quả: " + (data.results && data.results.length ? data.results.map((r) => r.title).join(", ") : "Không có"));
+        } catch (err) { alert("Lỗi tìm kiếm"); }
+      });
+
+      // inline login open/cancel (unchanged)
       document.getElementById("openLogin").addEventListener("click", (e) => {
         e.preventDefault();
         const inline = document.getElementById("inlineLogin");
@@ -345,7 +297,7 @@
         document.getElementById("inlineLogin").classList.add("hidden");
       });
 
-      // Load user (giữ nguyên) - thực hiện fetch /api/me
+      // load user (unchanged)
       async function loadUser() {
         try {
           const r = await fetch("/api/me");
