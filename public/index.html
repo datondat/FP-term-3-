@@ -8,51 +8,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="main.css">
 </head>
-<script>
-  // fallback: populate subjects if external index.js không chạy
-  (function(){
-    const subjectsByGrade = {
-      6:['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
-      7:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
-      8:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
-      9:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
-      10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
-      11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
-      12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
-      common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
-    };
-    function createItem(name, grade){
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = '#';
-      a.className = 'subject';
-      a.textContent = name;
-      a.setAttribute('data-desc', `Mô tả mẫu cho môn "${name}".`);
-      a.addEventListener('click', function(e){
-        e.preventDefault();
-        document.getElementById('subject-title').textContent = name;
-        document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}".`;
-        document.getElementById('subject-detail').style.display = 'block';
-      });
-      li.appendChild(a);
-      return li;
-    }
-    function populateFallback(){
-      Object.keys(subjectsByGrade).forEach(function(g){
-        const ul = document.getElementById('grade-' + g);
-        if(!ul) return;
-        if(ul.children.length === 0){
-          subjectsByGrade[g].forEach(n => ul.appendChild(createItem(n, g)));
-        }
-      });
-      console.info('[FP fallback] subjects populated');
-    }
-    if(document.readyState === 'loading'){
-      document.addEventListener('DOMContentLoaded', populateFallback);
-    } else populateFallback();
-  })();
-</script>
-</body>
 <body>
   <header class="top-header">
     <div class="header-left">
@@ -87,7 +42,6 @@
   </header>
 
   <main class="container">
-    <!-- MAIN CARD -->
     <section class="card" id="main">
       <div id="status-block" data-status-prompt>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
@@ -103,7 +57,6 @@
         </div>
       </div>
 
-      <!-- User card (hidden by default) -->
       <div id="user-card" class="card hidden" style="margin-top:16px">
         <h3>Thông tin tài khoản</h3>
         <div id="user-info" class="muted"></div>
@@ -120,7 +73,6 @@
       </div>
     </section>
 
-    <!-- SUBJECTS -->
     <section class="card subjects-view" id="subjects">
       <h3 class="service-title">Danh sách môn theo nhóm lớp</h3>
       <p class="small muted">Nhấp vào môn để xem mô tả mẫu và liên kết SGK / SBT tương ứng. Nhấn link để mở trang sách.</p>
@@ -171,7 +123,6 @@
         </div>
       </div>
 
-      <!-- detail box -->
       <div id="subject-detail" class="subject-detail" style="display:none; margin-top:12px">
         <h4 id="subject-title"></h4>
         <div id="subject-desc" class="muted"></div>
@@ -179,7 +130,6 @@
       </div>
     </section>
 
-    <!-- NOTES -->
     <section class="card" style="margin-top:16px">
       <h3>Ghi chú</h3>
       <ul>
@@ -193,6 +143,151 @@
     </footer>
   </main>
 
+  <!-- Inline script: đảm bảo subjects được populate ngay cả khi public/index.js chưa chạy hoặc bị lỗi.
+       Điều này chứa logic fallback: nếu window.FP.populateSubjects tồn tại thì gọi nó,
+       ngược lại sẽ populate tại chỗ và gắn delegation để hiển thị links tìm kiếm hoc10. -->
+  <script>
+    (function(){
+      'use strict';
+      // Dữ liệu môn tạm (giống với index.js) — dùng nếu không có window.FP.populateSubjects
+      const subjectsByGrade = {
+        6:['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
+        7:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
+        8:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
+        9:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
+        10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
+        11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
+        12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
+        common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
+      };
+
+      function hoc10Search(subject, grade){
+        return 'https://www.hoc10.vn/tim-kiem?q=' + encodeURIComponent(subject + (grade ? ' ' + grade : ''));
+      }
+
+      function createSubjectItem(name, grade){
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'subject';
+        a.textContent = name;
+        a.dataset.subject = name;
+        a.dataset.grade = grade;
+        a.setAttribute('data-desc', `Mô tả mẫu cho môn "${name}".`);
+        li.appendChild(a);
+        return li;
+      }
+
+      function fallbackPopulate(){
+        try {
+          Object.keys(subjectsByGrade).forEach(function(g){
+            const ul = document.getElementById('grade-' + g);
+            if(!ul) return;
+            if(ul.children.length === 0){
+              ul.innerHTML = '';
+              subjectsByGrade[g].forEach(function(name){
+                ul.appendChild(createSubjectItem(name, g));
+              });
+            }
+          });
+          installDelegation(); // đảm bảo click hoạt động
+          console.info('[FP inline fallback] subjects populated');
+        } catch(e){
+          console.error('[FP inline fallback] error populating subjects', e);
+        }
+      }
+
+      // Biến helper: hiện khung detail với link fallback (search hoc10)
+      function showDetailFallback(subject, grade){
+        const title = document.getElementById('subject-title');
+        const desc = document.getElementById('subject-desc');
+        const booksEl = document.getElementById('subject-books');
+        const wrap = document.getElementById('subject-detail');
+        if(title) title.textContent = subject;
+        if(desc) desc.textContent = `Tài liệu tham khảo cho ${subject} (Lớp ${grade}).`;
+        if(booksEl){
+          booksEl.innerHTML = '';
+          const a = document.createElement('a');
+          a.className = 'book-link';
+          a.href = hoc10Search(subject, grade);
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = `Tìm sách trên hoc10 cho ${subject} — Lớp ${grade}`;
+          booksEl.appendChild(a);
+        }
+        if(wrap) wrap.style.display = 'block';
+        try { window.scrollTo({ top: wrap.offsetTop - 20, behavior: 'smooth' }); } catch(e){}
+      }
+
+      // Delegation handler: nếu index.js đã cài đặt behaviour thì nó sẽ override; nếu không thì dùng fallback này
+      function installDelegation(){
+        const container = document.querySelector('.subjects-view') || document.body;
+        if(container._fpInlineDelegationInstalled) return;
+        container.addEventListener('click', function(e){
+          let el = e.target;
+          while(el && el !== container){
+            if(el.matches && el.matches('a.subject')){
+              e.preventDefault();
+              const subject = el.dataset.subject || el.textContent.trim();
+              const grade = el.dataset.grade || (el.closest && el.closest('[id^="grade-"]') ? el.closest('[id^="grade-"]').id.replace('grade-','') : 'unknown');
+              // prefer window.FP.showSubjectDetail if available (index.js likely defines it)
+              if(window.FP && typeof window.FP.showSubjectDetail === 'function'){
+                try { window.FP.showSubjectDetail(subject, grade); return; } catch(e){ /* fallthrough */ }
+              }
+              // fallback to simple search link
+              showDetailFallback(subject, grade);
+              return;
+            }
+            el = el.parentNode;
+          }
+        }, false);
+        container._fpInlineDelegationInstalled = true;
+      }
+
+      // Ensure auth/login links navigate even if other scripts block default
+      function ensureAuthLinksNavigate(){
+        ['link-login','link-register','link-upload','btn-upload-quick'].forEach(function(id){
+          const el = document.getElementById(id);
+          if(!el) return;
+          // capture phase so it runs before other listeners that might prevent default
+          el.addEventListener('click', function(ev){
+            const href = el.getAttribute('href') || el.dataset.href;
+            if(href) {
+              window.location.assign(href);
+              ev.stopImmediatePropagation();
+            }
+          }, { capture: true });
+        });
+      }
+
+      // Entry: on DOMContentLoaded decide whether to call external populate or fallback
+      function initInline(){
+        ensureAuthLinksNavigate();
+        // If external index.js loaded and defines populateSubjects, use that.
+        if(window.FP && typeof window.FP.populateSubjects === 'function'){
+          try {
+            window.FP.populateSubjects();
+            // ensure delegation is installed by external script (but install fallback if not)
+            if(!(document.querySelector('.subjects-view')._fpDelegationInstalled)) installDelegation();
+            console.info('[FP inline] used window.FP.populateSubjects');
+            return;
+          } catch(e){
+            console.warn('[FP inline] window.FP.populateSubjects threw, using fallback', e);
+          }
+        }
+        // Otherwise, run fallback populate + delegation
+        fallbackPopulate();
+      }
+
+      if(document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', initInline);
+      } else {
+        initInline();
+      }
+    })();
+  </script>
+
+  <!-- External runtime (contains full populate/show functions). Keep this. -->
   <script src="index.js"></script>
 </body>
 </html>
