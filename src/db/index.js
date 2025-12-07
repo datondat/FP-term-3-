@@ -1,10 +1,26 @@
-// public/index.js - cập nhật: ẩn #status-block (prompt) khi login
+// public/index.js - robust v4: id lookup + fallback text-search để ẩn "Bạn chưa đăng nhập"
 (function(){
+  'use strict';
+
+  function parseJwt(token){
+    try {
+      const parts = token.split('.');
+      if(parts.length !== 3) return null;
+      const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const json = decodeURIComponent(atob(payload).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(json);
+    } catch(e){
+      return null;
+    }
+  }
+
   const subjectsByGrade = {
-    6: ['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
-    7: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
-    8: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
-    9: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
+    6:['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
+    7:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
+    8:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
+    9:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
     10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
     11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
     12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
@@ -35,100 +51,154 @@
   }
 
   function populateSubjects(){
-    for (const g of [6,7,8,9,10,11,12]){
-      const list = subjectsByGrade[g] || [];
-      const container = gradeEls[g];
-      if(!container) continue;
-      container.innerHTML = '';
-      list.forEach(s => container.appendChild(createSubjectItem(s)));
-    }
-    if(gradeEls.common){
-      gradeEls.common.innerHTML='';
-      (subjectsByGrade.common || []).forEach(s => gradeEls.common.appendChild(createSubjectItem(s)));
-    }
+    Object.keys(gradeEls).forEach(k=>{
+      const el = gradeEls[k];
+      if(!el) return;
+      el.innerHTML = '';
+      const list = subjectsByGrade[k] || [];
+      list.forEach(s => el.appendChild(createSubjectItem(s)));
+    });
   }
 
   function showSubjectDetail(name){
-    document.getElementById('subject-title').textContent = name;
-    document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}". Bạn có thể liên kết môn này tới DB.`;
-    document.getElementById('subject-detail').style.display = 'block';
-    window.scrollTo({ top: document.getElementById('subject-detail').offsetTop - 20, behavior: 'smooth' });
+    const titleEl = document.getElementById('subject-title');
+    const descEl = document.getElementById('subject-desc');
+    const detailWrap = document.getElementById('subject-detail');
+    if(titleEl) titleEl.textContent = name;
+    if(descEl) descEl.textContent = `Mô tả mẫu cho môn "${name}". Bạn có thể liên kết môn này tới DB.`;
+    if(detailWrap) detailWrap.style.display = 'block';
+    if(detailWrap) window.scrollTo({ top: detailWrap.offsetTop - 20, behavior: 'smooth' });
   }
 
-  // Auth helpers
-  function token(){ return localStorage.getItem('token'); }
-
-  const statusBlock = document.getElementById('status-block'); // <--- chỉ ẩn phần này
-  const userCard = document.getElementById('user-card');
-  const linkLogin = document.getElementById('link-login');
-  const linkRegister = document.getElementById('link-register');
-  const uploadQuickBtn = document.getElementById('btn-upload-quick') || document.getElementById('link-upload');
-  const msgEl = document.getElementById('msg');
-  const errEl = document.getElementById('err');
-
-  function showMsg(t){ if(msgEl){ msgEl.style.display='block'; msgEl.textContent=t; if(errEl) errEl.style.display='none'; } }
-  function showErr(t){ if(errEl){ errEl.style.display='block'; errEl.textContent=t; if(msgEl) msgEl.style.display='none'; } }
-  function hideMsgs(){ if(msgEl) msgEl.style.display='none'; if(errEl) errEl.style.display='none'; }
-
-  function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  async function fetchProfile(){
-    hideMsgs();
-    const t = token();
-    if(!t){ setLoggedOutUI(); return; }
-    try{
-      const res = await fetch('/api/auth/me', { method:'GET', cache:'no-store', headers:{ 'Authorization':'Bearer ' + t, 'Accept':'application/json' }});
-      if(!res.ok){ console.warn('/api/auth/me returned', res.status); setLoggedOutUI(); return; }
-      const j = await res.json().catch(()=>null);
-      if(!j || !j.user){ setLoggedOutUI(); return; }
-      setLoggedInUI(j.user);
-    }catch(e){
-      console.warn('fetchProfile failed', e);
-      setLoggedOutUI();
+  // Helper: tìm và ẩn phần "Bạn chưa đăng nhập" nếu id không tồn tại
+  function hideStatusBlockFallback(){
+    const statusBlock = document.getElementById('status-block');
+    if(statusBlock){
+      statusBlock.classList.add('hidden');
+      return true;
     }
+    // fallback: tìm node chứa text "Bạn chưa đăng nhập"
+    const text = 'Bạn chưa đăng nhập';
+    const candidates = Array.from(document.querySelectorAll('h1,h2,h3,h4,div,span')).filter(n => (n.textContent||'').trim().includes(text));
+    if(!candidates.length) return false;
+    candidates.forEach(n => {
+      const card = n.closest('.card') || n.parentElement;
+      if(card){
+        card.classList.add('hidden');
+        console.info('[index.js] fallback: hid card for node', n);
+      } else {
+        n.style.display = 'none';
+      }
+    });
+    return true;
   }
 
+  // Auth UI using classList (works with .hidden {display:none!important})
   function setLoggedInUI(user){
-    // Ẩn chỉ phần status prompt, giữ user-card hiện
-    if(statusBlock) statusBlock.style.display = 'none';
-    if(userCard){
-      userCard.style.display = '';
-      const ui = document.getElementById('user-info');
-      if(ui) ui.innerHTML = `<strong>${escapeHtml(user.display_name || user.username)}</strong><div class="muted">role: ${escapeHtml(user.role||'')}</div>`;
+    if(!hideStatusBlockFallback()){
+      // if nothing to hide by text, try removing header-level prompt (last resort)
+      const st = document.querySelector('[data-status-prompt]');
+      if(st) st.classList.add('hidden');
     }
-    if(linkLogin) linkLogin.style.display='none';
-    if(linkRegister) linkRegister.style.display='none';
-    if(uploadQuickBtn) uploadQuickBtn.style.display='';
+    const userCard = document.getElementById('user-card');
+    if(userCard) {
+      userCard.classList.remove('hidden');
+      const ui = document.getElementById('user-info');
+      if(ui) ui.innerHTML = `<strong>${escapeHtml(user.display_name || user.username || user.email || '')}</strong>
+                             <div class="muted">role: ${escapeHtml(user.role || '')}</div>`;
+    }
+    const linkLogin = document.getElementById('link-login');
+    const linkRegister = document.getElementById('link-register');
+    const uploadQuickBtn = document.getElementById('btn-upload-quick') || document.getElementById('link-upload');
+    if(linkLogin) linkLogin.style.display = 'none';
+    if(linkRegister) linkRegister.style.display = 'none';
+    if(uploadQuickBtn) uploadQuickBtn.style.display = '';
   }
 
   function setLoggedOutUI(){
-    if(statusBlock) statusBlock.style.display = '';
-    if(userCard) userCard.style.display = 'none';
-    if(linkLogin) linkLogin.style.display='';
-    if(linkRegister) linkRegister.style.display='';
-    if(uploadQuickBtn) uploadQuickBtn.style.display='none';
+    // show possible hidden status blocks
+    const blocks = document.querySelectorAll('.card.hidden');
+    blocks.forEach(b => {
+      // only re-show ones that contain "Bạn chưa đăng nhập" to avoid revealing other hidden cards
+      if((b.textContent||'').includes('Bạn chưa đăng nhập')) b.classList.remove('hidden');
+    });
+    const userCard = document.getElementById('user-card');
+    if(userCard) userCard.classList.add('hidden');
+    const linkLogin = document.getElementById('link-login');
+    const linkRegister = document.getElementById('link-register');
+    const uploadQuickBtn = document.getElementById('btn-upload-quick') || document.getElementById('link-upload');
+    if(linkLogin) linkLogin.style.display = '';
+    if(linkRegister) linkRegister.style.display = '';
+    if(uploadQuickBtn) uploadQuickBtn.style.display = 'none';
   }
 
-  document.getElementById('btn-logout')?.addEventListener('click', ()=>{
-    localStorage.removeItem('token');
-    setLoggedOutUI();
-    showMsg('Đã đăng xuất.');
-  });
+  function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  document.getElementById('btn-test')?.addEventListener('click', async ()=>{
+  // Immediate from token (client decode) then verify
+  function token(){ return localStorage.getItem('token'); }
+  function showImmediateFromToken(tkn){
+    const payload = parseJwt(tkn);
+    if(!payload) return false;
+    const pseudoUser = {
+      username: payload.username || payload.userName || payload.user || payload.sub || ('id:' + (payload.userId||payload.userID||payload.user_id||'')),
+      display_name: payload.display_name || payload.name || payload.username,
+      role: payload.role || payload.roles || payload.roleName || ''
+    };
+    setLoggedInUI(pseudoUser);
+    return true;
+  }
+
+  async function verifyTokenWithServer(){
     const t = token();
-    if(!t){ showErr('Không có token.'); return; }
+    if(!t){ setLoggedOutUI(); return; }
     try{
-      const res = await fetch('/api/profile', { headers:{ 'Authorization':'Bearer ' + t }, cache:'no-store' });
-      const j = await res.json().catch(()=>null);
-      if(!res.ok){ showErr(j && j.error ? j.error : 'Lỗi'); return; }
-      document.getElementById('api-result').textContent = JSON.stringify(j, null, 2);
-    }catch(e){ showErr('Lỗi kết nối: '+ e.message); }
-  });
+      const res = await fetch('/api/auth/me', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/json' }
+      });
+      if(!res.ok){
+        localStorage.removeItem('token');
+        setLoggedOutUI();
+        return;
+      }
+      const body = await res.json().catch(()=>null);
+      let user = null;
+      if(body && body.user) user = body.user;
+      else if(body && (body.username || body.display_name || body.id || body.email)) user = body;
+      if(!user){
+        localStorage.removeItem('token');
+        setLoggedOutUI();
+        return;
+      }
+      setLoggedInUI(user);
+    }catch(err){
+      console.warn('[index.js] verifyTokenWithServer error', err);
+      // keep immediate UI shown if network error
+    }
+  }
 
   // init
-  (function init(){ populateSubjects(); fetchProfile(); })();
+  (function init(){
+    populateSubjects();
+    const t = token();
+    if(t){
+      showImmediateFromToken(t);
+      setTimeout(verifyTokenWithServer, 30);
+    } else {
+      setLoggedOutUI();
+    }
+  })();
 
-  window.FP = { populateSubjects, fetchProfile, setLoggedInUI, setLoggedOutUI };
+  // expose
+  window.FP = window.FP || {};
+  window.FP.verifyToken = verifyTokenWithServer;
+  window.FP.setLoggedInUI = setLoggedInUI;
+  window.FP.setLoggedOutUI = setLoggedOutUI;
+  window.FP.parseJwt = parseJwt;
+
+  // small helpers (used above)
+  function parseJwt(token){ try{ const p = token.split('.')[1]; const b = atob(p.replace(/-/g, '+').replace(/_/g, '/')); return JSON.parse(decodeURIComponent(escape(b))); }catch(e){ return null } }
+  function escape(s){ return s; } // noop for older parseJwt; kept for compatibility
 
 })();
