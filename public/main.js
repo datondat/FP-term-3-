@@ -1,607 +1,373 @@
 /* public/main.js
-   Full updated file: autocomplete dropdown, robust inline login handling,
-   and logout helpers appended at the end.
+   Full client runtime — complete version.
+   - populates subject lists
+   - handles subject click to show links (hoc10 + example)
+   - search/autocomplete (basic)
+   - inline login handling (AJAX)
+   - loadUser() updates UI (hide/show status, login/register, logout, user-card)
+   - doLogout() and logout button installers
 */
 document.addEventListener('DOMContentLoaded', () => {
-  // mapping lớp -> môn
+  // mapping lớp -> môn (source of truth)
   const classSubjects = {
-    "Lớp 6": ["Toán","Ngữ văn","Tiếng Anh","Khoa học tự nhiên","Lịch sử","Địa lý"],
-    "Lớp 7": ["Toán","Ngữ văn","Tiếng Anh","Vật lý cơ bản","Sinh học","Công nghệ"],
-    "Lớp 8": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Lịch sử"],
-    "Lớp 9": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học"],
-    "Lớp 10": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học"],
-    "Lớp 11": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học"],
-    "Lớp 12": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học"],
+    "Lớp 6": ["Toán","Ngữ văn","Tiếng Anh","Khoa học tự nhiên","Lịch sử","Địa lý","Tin học","Công nghệ","GDCD"],
+    "Lớp 7": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử","Địa lý","Công nghệ"],
+    "Lớp 8": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử","Địa lý","Tin học"],
+    "Lớp 9": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử","Địa lý","GDQPAN"],
+    "Lớp 10": ["Toán (Tự chọn/Chuyên)","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Tin học","GDCD"],
+    "Lớp 11": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Tin học","GDQPAN"],
+    "Lớp 12": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Tin học","Lịch sử & Địa lí"],
     "Giáo án - Đề thi": ["Đề thi THCS","Đề thi THPT","Giáo án mẫu"]
   };
 
-  // Elements
-  const subjectsGrid = document.getElementById('subjectsGrid');
-  const subjectsTitle = document.getElementById('subjectsTitle');
-  const categoryArea = document.getElementById('categoryArea');
-  const subjectsView = document.getElementById('subjectsView');
-  const backBtn = document.getElementById('backToClasses');
-  const menuLinks = document.querySelectorAll('.menu-class a[data-class]');
-  const accordionBtns = document.querySelectorAll('.accordion-button');
+  // Helper selectors
   const searchForm = document.getElementById('searchForm');
-  const openLogin = document.getElementById('openLogin');
-  const inlineLogin = document.getElementById('inlineLogin');
-  const inlineLoginForm = document.getElementById('inlineLoginForm');
-  const inlineCancel = document.getElementById('inlineCancel');
-  const userDropdown = document.getElementById('userDropdown');
-  const avatarBtn = document.getElementById('avatarBtn');
+  const inputEl = searchForm ? searchForm.querySelector('.search-input') : null;
+  const statusBlock = document.getElementById('status-block');
+  const userCard = document.getElementById('user-card');
+  const userInfoEl = document.getElementById('user-info');
+  const subjectDetailWrap = document.getElementById('subject-detail');
+  const subjectTitleEl = document.getElementById('subject-title');
+  const subjectDescEl = document.getElementById('subject-desc');
+  const subjectBooksEl = document.getElementById('subject-books');
 
-  // --- Helper utils ---
-  function debounce(fn, wait) {
-    let t;
-    return function (...args) {
-      clearTimeout(t);
-      t = setTimeout(() => fn.apply(this, args), wait);
-    };
-  }
+  // header controls
+  const btnLoginHeader = document.getElementById('btn-login-header') || document.getElementById('link-login');
+  const btnRegisterHeader = document.getElementById('btn-register-header') || document.getElementById('link-register');
+
+  // --- Utilities ---
   function escapeHtml(s = '') {
     return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-
-  // --- Result container (full results) ---
-  const resultsContainerId = 'searchResultsContainer';
-  let resultsContainer = document.getElementById(resultsContainerId);
-  if (!resultsContainer) {
-    resultsContainer = document.createElement('section');
-    resultsContainer.id = resultsContainerId;
-    resultsContainer.className = 'search-results';
-    const mainNode = document.querySelector('main') || null;
-    document.body.insertBefore(resultsContainer, mainNode);
+  function debounce(fn, wait) {
+    let t;
+    return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
   }
 
-  function renderResults(data) {
-    resultsContainer.innerHTML = '';
-    if (!data || !data.results || data.results.length === 0) {
-      resultsContainer.innerHTML = '<p class="no-results">Không tìm thấy kết quả.</p>';
-      return;
-    }
-
-    const info = document.createElement('div');
-    info.className = 'results-info';
-    info.textContent = `Tìm thấy ${data.total} kết quả — Trang ${data.page}`;
-    resultsContainer.appendChild(info);
-
-    const list = document.createElement('div');
-    list.className = 'results-list';
-    data.results.forEach(r => {
-      const it = r.item;
-      const card = document.createElement('article');
-      card.className = 'result-card';
-      card.innerHTML = `
-        <h3 class="result-title"><a href="${escapeHtml(it.url || '#')}">${escapeHtml(it.title || '(Không có tiêu đề)')}</a></h3>
-        <div class="result-meta">${escapeHtml(it.subject || '')} ${it.tags ? ' · ' + escapeHtml((it.tags || []).join(', ')) : ''}</div>
-        <p class="result-snippet">${escapeHtml((it.content || '').slice(0, 250))}...</p>
-      `;
-      list.appendChild(card);
+  // --- Populate subject lists into grade-X <ul> elements ---
+  function populateSubjects() {
+    Object.keys(classSubjects).forEach(key => {
+      // determine matching ul id: if key contains number -> grade-N, else grade-common
+      const m = key.match(/\d+/);
+      const id = m ? 'grade-' + m[0] : 'grade-common';
+      const ul = document.getElementById(id);
+      if (!ul) return;
+      ul.innerHTML = ''; // reset
+      classSubjects[key].forEach(sub => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'subject';
+        a.textContent = sub;
+        a.dataset.subject = sub;
+        a.dataset.grade = m ? m[0] : '';
+        a.setAttribute('data-desc', `Mô tả mẫu cho môn "${sub}"`);
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
     });
-    resultsContainer.appendChild(list);
-
-    // Pagination controls if needed
-    const totalPages = Math.ceil((data.total || 0) / (data.perPage || 10));
-    if (totalPages > 1) {
-      const pager = document.createElement('div');
-      pager.className = 'results-pager';
-      const cur = data.page || 1;
-      if (cur > 1) {
-        const prev = document.createElement('button');
-        prev.className = 'btn pager-btn';
-        prev.textContent = '‹ Trước';
-        prev.addEventListener('click', () => doSearch(currentQuery, cur - 1));
-        pager.appendChild(prev);
-      }
-      const pageInfo = document.createElement('span');
-      pageInfo.textContent = `Trang ${cur} / ${totalPages}`;
-      pager.appendChild(pageInfo);
-      if (cur < totalPages) {
-        const next = document.createElement('button');
-        next.className = 'btn pager-btn';
-        next.textContent = 'Tiếp ›';
-        next.addEventListener('click', () => doSearch(currentQuery, cur + 1));
-        pager.appendChild(next);
-      }
-      resultsContainer.appendChild(pager);
-    }
   }
 
-  let currentQuery = '';
+  // --- Subject detail UI (show links) ---
+  function hoc10Search(subject, grade){
+    return 'https://www.hoc10.vn/tim-kiem?q=' + encodeURIComponent(subject + (grade ? ' ' + grade : ''));
+  }
 
-  async function doSearch(q, page = 1) {
-    currentQuery = q;
-    if (!q) {
-      renderResults({ total: 0, page: 1, perPage: 10, results: [] });
-      return;
-    }
-    resultsContainer.innerHTML = '<p class="loading">Đang tìm kiếm…</p>';
-    try {
-      const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&page=' + page + '&limit=10');
-      if (!res.ok) {
-        // show friendly message in results area
-        const text = await safeText(res);
-        resultsContainer.innerHTML = `<p class="error">Lỗi khi tìm kiếm: ${escapeHtml(res.status + ' ' + res.statusText)} ${escapeHtml(text)}</p>`;
-        return;
+  function showSubjectDetail(subject, grade){
+    if(!subjectDetailWrap) return;
+    subjectTitleEl.textContent = subject;
+    subjectDescEl.textContent = `Tài liệu tham khảo và liên kết cho ${subject}${grade ? ' (Lớp ' + grade + ')' : ''}.`;
+    subjectBooksEl.innerHTML = '';
+
+    // Add direct hoc10 search link
+    const linkHoc10 = document.createElement('a');
+    linkHoc10.href = hoc10Search(subject, grade);
+    linkHoc10.target = '_blank';
+    linkHoc10.rel = 'noopener noreferrer';
+    linkHoc10.className = 'book-link';
+    linkHoc10.textContent = `Tìm sách trên hoc10 cho ${subject}${grade ? ' — Lớp ' + grade : ''}`;
+    subjectBooksEl.appendChild(linkHoc10);
+
+    // Add example resource links (could be expanded to real URLs if available)
+    const exampleLinks = [
+      { label: 'Giáo án mẫu', url: '#' },
+      { label: 'Đề kiểm tra mẫu', url: '#' }
+    ];
+    const ul = document.createElement('ul');
+    ul.className = 'resource-list';
+    exampleLinks.forEach(it => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = it.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = it.label;
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    subjectBooksEl.appendChild(ul);
+
+    subjectDetailWrap.style.display = 'block';
+    try { subjectDetailWrap.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){}
+  }
+
+  // --- Delegation: click handler for subject links ---
+  function installSubjectDelegation(){
+    const container = document.querySelector('.subjects-view') || document.body;
+    if(container._fpDelegationInstalled) return;
+    container.addEventListener('click', function(e){
+      let el = e.target;
+      while(el && el !== container){
+        if(el.matches && el.matches('a.subject')){
+          e.preventDefault();
+          const subject = el.dataset.subject || el.textContent.trim();
+          const grade = el.dataset.grade || '';
+          showSubjectDetail(subject, grade);
+          return;
+        }
+        el = el.parentNode;
       }
-      const data = await res.json();
-      renderResults(data);
-    } catch (err) {
-      resultsContainer.innerHTML = `<p class="error">Lỗi khi tìm kiếm: ${escapeHtml(err.message)}</p>`;
-    }
+    }, false);
+    container._fpDelegationInstalled = true;
   }
 
-  async function safeText(res) {
-    try {
-      return await res.text();
-    } catch (e) {
-      return '';
-    }
-  }
-
-  // --- Autocomplete dropdown ---
-  // Create dropdown element
+  // --- Search / Autocomplete (light) ---
   const dropdownId = 'searchAutocomplete';
   let dropdown = document.getElementById(dropdownId);
-  const inputEl = searchForm ? searchForm.querySelector('.search-input') : null;
-  if (!dropdown) {
+  if(!dropdown){
     dropdown = document.createElement('div');
     dropdown.id = dropdownId;
     dropdown.className = 'search-autocomplete hidden';
     document.body.appendChild(dropdown);
   }
-
-  let activeIndex = -1;
-  let suggestions = [];
-  function positionDropdown() {
-    if (!inputEl || !dropdown) return;
+  let suggestions = [], activeIndex = -1;
+  function positionDropdown(){
+    if(!inputEl) return;
     const rect = inputEl.getBoundingClientRect();
-    dropdown.style.width = Math.max(240, rect.width) + 'px';
-    // place dropdown aligned to input (fixed positioning to not be cut off)
     dropdown.style.left = (rect.left + window.scrollX) + 'px';
     dropdown.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+    dropdown.style.width = Math.max(240, rect.width) + 'px';
   }
-
-  function showDropdown(items) {
+  function showDropdown(items){
     suggestions = items || [];
     activeIndex = -1;
     dropdown.innerHTML = '';
-    if (!items || items.length === 0) {
-      dropdown.classList.add('hidden');
-      return;
-    }
-    const ul = document.createElement('ul');
-    ul.className = 'autocomplete-list';
-    items.forEach((it, i) => {
-      const li = document.createElement('li');
-      li.className = 'autocomplete-item';
-      li.innerHTML = `
-        <div class="title">${escapeHtml(it.title || it.name || '(Không tiêu đề)')}</div>
-        <div class="meta">${escapeHtml(it.subject || '')}${it.tags ? ' · ' + escapeHtml((it.tags||[]).slice(0,3).join(', ')) : ''}</div>
-      `;
-      li.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectSuggestion(i);
-      });
+    if(!items || !items.length){ dropdown.classList.add('hidden'); return; }
+    const ul = document.createElement('ul'); ul.className = 'autocomplete-list';
+    items.forEach((it,i) => {
+      const li = document.createElement('li'); li.className = 'autocomplete-item';
+      li.innerHTML = `<div class="title">${escapeHtml(it.title || it.name)}</div><div class="meta">${escapeHtml(it.meta || '')}</div>`;
+      li.addEventListener('click', (ev)=>{ ev.stopPropagation(); selectSuggestion(i); });
       ul.appendChild(li);
     });
     dropdown.appendChild(ul);
     dropdown.classList.remove('hidden');
     positionDropdown();
   }
-
-  function hideDropdown() {
-    dropdown.classList.add('hidden');
-    activeIndex = -1;
-    suggestions = [];
+  function hideDropdown(){ dropdown.classList.add('hidden'); suggestions = []; activeIndex = -1; }
+  function selectSuggestion(i){
+    const it = suggestions[i];
+    if(!it) return;
+    if(it.url) window.location.href = it.url;
+    else { if(inputEl) inputEl.value = it.title || it.name || ''; hideDropdown(); performSearch(inputEl.value); }
   }
+  async function performSearch(q){ if(!q) return; try { await doSearch(q,1); } catch(e){} }
 
-  function selectSuggestion(index) {
-    if (!suggestions[index]) return;
-    const it = suggestions[index];
-    // If item has url, navigate; else set input value and run full search
-    if (it.url) {
-      window.location.href = it.url;
-    } else {
-      inputEl.value = it.title || it.name || '';
-      hideDropdown();
-      doSearch(inputEl.value, 1);
-    }
-  }
-
-  function highlightActive() {
-    const items = dropdown.querySelectorAll('.autocomplete-item');
-    items.forEach((el, i) => {
-      if (i === activeIndex) el.classList.add('active');
-      else el.classList.remove('active');
-    });
-  }
-
-  // Try suggest endpoint first; fallback to search with small limit
-  async function fetchSuggestions(q) {
-    if (!q) return [];
-    try {
-      // Prefer /api/suggest
-      let res = await fetch('/api/suggest?q=' + encodeURIComponent(q));
-      if (res.ok) {
-        const d = await res.json();
-        return d.suggestions || [];
-      }
-      // fallback: use /api/search with small limit
-      res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=6');
-      if (!res.ok) return [];
-      const sd = await res.json();
-      return (sd.results || []).map(r => r.item || r);
-    } catch (err) {
-      // network error -> return empty suggestions
-      return [];
-    }
-  }
-
-  // keyboard navigation on input
-  if (inputEl) {
-    inputEl.addEventListener('input', debounce(async (e) => {
+  if(inputEl){
+    inputEl.addEventListener('input', debounce(async (e)=>{
       const q = e.target.value || '';
-      if (!q) {
-        hideDropdown();
-        return;
-      }
-      const items = await fetchSuggestions(q);
-      showDropdown(items);
-    }, 200));
-
-    // reposition dropdown on resize/scroll
+      if(!q){ hideDropdown(); return; }
+      // lightweight suggestion: search through classSubjects
+      const all = [];
+      Object.values(classSubjects).forEach(arr => arr.forEach(s => all.push(s)));
+      const filtered = [...new Set(all)].filter(s => s.toLowerCase().includes(q.toLowerCase())).slice(0,6).map(x => ({ title: x, meta: '' }));
+      showDropdown(filtered);
+    }, 150));
     window.addEventListener('resize', positionDropdown);
     window.addEventListener('scroll', positionDropdown);
-
-    inputEl.addEventListener('keydown', (e) => {
-      if (dropdown.classList.contains('hidden')) return;
+    inputEl.addEventListener('keydown', (e)=>{
+      if(dropdown.classList.contains('hidden')) return;
       const len = suggestions.length;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        activeIndex = (activeIndex + 1) % len;
-        highlightActive();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        activeIndex = (activeIndex - 1 + len) % len;
-        highlightActive();
-      } else if (e.key === 'Enter') {
-        if (activeIndex >= 0) {
-          e.preventDefault();
-          selectSuggestion(activeIndex);
-        } else {
-          // submit search
-          e.preventDefault();
-          const q = inputEl.value || '';
-          hideDropdown();
-          doSearch(q, 1);
-        }
-      } else if (e.key === 'Escape') {
-        hideDropdown();
-      }
+      if(e.key === 'ArrowDown'){ e.preventDefault(); activeIndex = (activeIndex + 1) % len; highlightActive(); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); activeIndex = (activeIndex - 1 + len) % len; highlightActive(); }
+      else if(e.key === 'Enter'){ if(activeIndex >= 0){ e.preventDefault(); selectSuggestion(activeIndex); } else { e.preventDefault(); performSearch(inputEl.value); } }
+      else if(e.key === 'Escape'){ hideDropdown(); }
     });
   }
-
-  // close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target) && e.target !== inputEl) {
-      hideDropdown();
-    }
-  });
-
-  // Attach search handlers (replaces old alert-based handler)
-  if (searchForm) {
-    // submit handler
-    searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const q = new FormData(searchForm).get('q') || '';
-      hideDropdown();
-      doSearch(q, 1);
-    });
+  function highlightActive(){
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    items.forEach((el,i)=> el.classList.toggle('active', i === activeIndex));
   }
+  document.addEventListener('click', (e)=>{ if(!dropdown.contains(e.target) && e.target !== inputEl) hideDropdown(); });
 
-  // --- Existing UI code for subjects, login, etc. (kept mostly unchanged) ---
-  function renderSubjectsList(className) {
-    const subjects = classSubjects[className] || [];
-    subjectsGrid.innerHTML = '';
-    subjectsTitle.textContent = `Các môn của ${className}`;
-
-    if (!subjects.length) {
-      subjectsGrid.innerHTML = '<p>Chưa có môn cho lớp này.</p>';
-      return;
-    }
-
-    subjects.forEach(sub => {
-      const card = document.createElement('div');
-      card.className = 'subject-card';
-      card.innerHTML = `
-        <div class="subject-name">${sub}</div>
-        <button class="btn show-material" data-sub="${sub}">Xem tài liệu</button>
-      `;
-      subjectsGrid.appendChild(card);
-    });
+  // --- Search API (results) ---
+  const resultsContainerId = 'searchResultsContainer';
+  let resultsContainer = document.getElementById(resultsContainerId);
+  if(!resultsContainer){
+    resultsContainer = document.createElement('section');
+    resultsContainer.id = resultsContainerId;
+    resultsContainer.className = 'search-results';
+    const mainNode = document.querySelector('main') || null;
+    document.body.insertBefore(resultsContainer, mainNode);
   }
-  function showSubjects(className) {
-    renderSubjectsList(className);
-    categoryArea.classList.add('hidden');
-    document.querySelectorAll('.accordion-item').forEach(it => {
-      it.classList.add('hidden-item');
-      it.classList.remove('active');
-    });
-    subjectsView.classList.remove('hidden');
-    subjectsView.setAttribute('aria-hidden', 'false');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  function hideSubjects() {
-    document.querySelectorAll('.accordion-item').forEach(it => {
-      it.classList.remove('hidden-item');
-    });
-    subjectsView.classList.add('hidden');
-    subjectsView.setAttribute('aria-hidden', 'true');
-    categoryArea.classList.remove('hidden');
-    categoryArea && categoryArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-  menuLinks.forEach(a => {
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      const cls = a.dataset.class;
-      if (cls) showSubjects(cls);
-    });
-  });
-  accordionBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const cls = btn.dataset.class;
-      if (cls) showSubjects(cls);
-    });
-  });
-  backBtn && backBtn.addEventListener('click', hideSubjects);
-  document.addEventListener('click', (e) => {
-    if (e.target && e.target.matches('.show-material')) {
-      const sub = e.target.dataset.sub;
-      alert('Bạn chọn môn: ' + sub);
-    }
-  });
-
-  // Inline login open
-  if (openLogin) {
-    openLogin.addEventListener('click', (e) => {
-      e.preventDefault();
-      inlineLogin.classList.remove('hidden');
-      inlineLogin.setAttribute('aria-hidden', 'false');
-      inlineLogin.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const first = inlineLogin.querySelector('input[name="username"]');
-      first && first.focus();
-      userDropdown && userDropdown.classList.remove('open');
-    });
-  }
-  inlineCancel && inlineCancel.addEventListener('click', () => {
-    inlineLogin.classList.add('hidden');
-    inlineLogin.setAttribute('aria-hidden', 'true');
-  });
-
-  // --- REPLACED: more robust inline login submit handler ---
-  inlineLoginForm && inlineLoginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    // disable submit to prevent duplicates
-    const submitBtn = inlineLoginForm.querySelector('button[type="submit"], input[type="submit"]');
-    if (submitBtn) submitBtn.disabled = true;
-
-    const fd = new FormData(inlineLoginForm);
-    const payload = { username: fd.get('username'), password: fd.get('password') };
-
-    // small helper to show error nicely
-    function showInlineError(msg) {
-      try {
-        let el = inlineLoginForm.querySelector('.inline-login-error');
-        if (!el) {
-          el = document.createElement('div');
-          el.className = 'inline-login-error err';
-          inlineLoginForm.prepend(el);
-        }
-        el.textContent = msg;
-      } catch (err) {
-        console.error('showInlineError', err);
-        alert(msg);
-      }
-    }
-
+  async function doSearch(q, page=1){
+    if(!q){ resultsContainer.innerHTML = '<p class="no-results">Không tìm thấy kết quả.</p>'; return; }
+    resultsContainer.innerHTML = '<p class="loading">Đang tìm kiếm…</p>';
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&page=' + page + '&limit=10', { credentials: 'include' });
+      if(!res.ok){ resultsContainer.innerHTML = `<p class="error">Lỗi khi tìm kiếm: ${res.status} ${res.statusText}</p>`; return; }
+      const data = await res.json();
+      // reuse render logic simple:
+      if(!data || !data.results || data.results.length === 0){ resultsContainer.innerHTML = '<p class="no-results">Không tìm thấy kết quả.</p>'; return; }
+      let html = `<div class="results-info">Tìm thấy ${data.total || data.results.length} kết quả — Trang ${data.page || 1}</div><div class="results-list">`;
+      data.results.forEach(r => {
+        const it = r.item || r;
+        html += `<article class="result-card"><h3 class="result-title"><a href="${escapeHtml(it.url||'#')}" target="_blank">${escapeHtml(it.title||(it.name||'(Không tiêu đề)'))}</a></h3>
+                 <div class="result-meta">${escapeHtml(it.subject||'')}</div>
+                 <p class="result-snippet">${escapeHtml((it.content||'').slice(0,250))}...</p></article>`;
       });
+      html += '</div>';
+      resultsContainer.innerHTML = html;
+    } catch(err){
+      resultsContainer.innerHTML = `<p class="error">Lỗi khi tìm kiếm: ${escapeHtml(err.message)}</p>`;
+    }
+  }
 
-      // If server performed redirect and fetch followed it:
-      if (res.redirected) {
-        // go to final URL (server-side decided)
-        window.location.replace(res.url);
-        return;
+  if(searchForm) searchForm.addEventListener('submit', (e)=>{ e.preventDefault(); performSearch(inputEl ? inputEl.value : new FormData(searchForm).get('q') ); hideDropdown(); });
+
+  // --- Inline login handling (if you have inline form) ---
+  const inlineLoginForm = document.getElementById('inlineLoginForm');
+  if(inlineLoginForm){
+    inlineLoginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const btn = inlineLoginForm.querySelector('button[type="submit"], input[type="submit"]');
+      if(btn) btn.disabled = true;
+      const fd = new FormData(inlineLoginForm);
+      const payload = { username: fd.get('username'), password: fd.get('password') };
+      function showInlineError(msg){
+        let el = inlineLoginForm.querySelector('.inline-login-error');
+        if(!el){ el = document.createElement('div'); el.className = 'inline-login-error err'; inlineLoginForm.prepend(el); }
+        el.textContent = msg;
       }
-
-      const ct = res.headers.get('content-type') || '';
-      if (ct.indexOf('application/json') !== -1) {
-        const json = await res.json();
-        if (res.ok && (json.ok || json.token)) {
-          // store token if returned (default to sessionStorage)
-          try {
-            const remember = !!inlineLoginForm.querySelector('input[name="remember"]:checked');
-            if (json.token) {
-              if (remember) localStorage.setItem('auth_token', json.token);
-              else sessionStorage.setItem('auth_token', json.token);
-            }
-          } catch (err) { /* ignore storage errors */ }
-
-          // close inline login and refresh user UI
-          inlineLogin.classList.add('hidden');
-          inlineLogin.setAttribute('aria-hidden', 'true');
-          await loadUser();
-          return;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        if(res.redirected){ window.location.replace(res.url); return; }
+        const ct = res.headers.get('content-type') || '';
+        if(ct.indexOf('application/json') !== -1){
+          const json = await res.json();
+          if(res.ok && (json.ok || json.token)){
+            // store token optionally
+            try {
+              const remember = !!inlineLoginForm.querySelector('input[name="remember"]:checked');
+              if(json.token){ if(remember) localStorage.setItem('auth_token', json.token); else sessionStorage.setItem('auth_token', json.token); }
+            } catch(e){}
+            // update UI
+            await loadUser();
+            // hide inline form if present
+            const inlineWrap = document.getElementById('inlineLogin');
+            if(inlineWrap){ inlineWrap.classList.add('hidden'); inlineWrap.setAttribute('aria-hidden','true'); }
+            return;
+          } else {
+            showInlineError(json.message || 'Đăng nhập thất bại');
+          }
         } else {
-          showInlineError(json.message || 'Đăng nhập thất bại');
+          const txt = await res.text();
+          showInlineError('Phản hồi không hợp lệ từ server');
+          console.debug('login text', txt.slice(0,200));
         }
-      } else if (ct.indexOf('text/html') !== -1) {
-        // server returned HTML (likely a non-AJAX response); navigate if different
-        const text = await res.text();
-        // try to detect a redirect URL in response (as fallback)
-        if (res.url && res.url !== window.location.href) {
-          window.location.replace(res.url);
-          return;
-        }
-        showInlineError('Đã nhận về trang HTML từ server; đăng nhập không thành công.');
-        console.debug('login HTML response', text.slice(0,200));
-      } else {
-        showInlineError('Phản hồi không hợp lệ từ server.');
-      }
-    } catch (err) {
-      console.error('inline login error', err);
-      showInlineError('Lỗi mạng, thử lại sau');
-    } finally {
-      if (submitBtn) submitBtn.disabled = false;
-    }
-  });
+      } catch(err){
+        showInlineError('Lỗi mạng, thử lại sau');
+      } finally { if(btn) btn.disabled = false; }
+    });
+  }
 
-  avatarBtn && avatarBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userDropdown && userDropdown.classList.toggle('open');
-    userDropdown && userDropdown.setAttribute('aria-hidden', !userDropdown.classList.contains('open'));
-  });
-  document.addEventListener('click', () => {
-    if (userDropdown) {
-      userDropdown.classList.remove('open');
-      userDropdown.setAttribute('aria-hidden', 'true');
-    }
-  });
-  userDropdown && userDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-  // Load current user state
-  async function loadUser() {
+  // --- AUTH state handling + logout ---
+  async function loadUser(){
     try {
       const r = await fetch('/api/me', { credentials: 'include' });
-      const j = await r.json();
-      const logged = j.user;
-      const userNot = document.getElementById('userNotLogged');
-      const userLogged = document.getElementById('userLogged');
-      const userNameDisplay = document.getElementById('userNameDisplay');
-      if (logged) {
-        userNot && (userNot.style.display = 'none');
-        userLogged && (userLogged.style.display = 'block');
-        userNameDisplay && (userNameDisplay.textContent = logged.displayName || logged.username);
+      let j = null;
+      try { j = await r.json(); } catch(e){ j = null; }
+      const logged = j && j.user ? j.user : null;
+      if(logged){
+        // hide status block
+        if(statusBlock) statusBlock.style.display = 'none';
+        if(userCard) userCard.classList.remove('hidden');
+        if(userInfoEl) userInfoEl.textContent = logged.displayName || logged.username || (logged.email || '');
+        if(btnLoginHeader) btnLoginHeader.style.display = 'none';
+        if(btnRegisterHeader) btnRegisterHeader.style.display = 'none';
+        // show logout buttons
+        document.querySelectorAll('.btn-logout').forEach(b => b.style.display = '');
       } else {
-        userNot && (userNot.style.display = 'block');
-        userLogged && (userLogged.style.display = 'none');
+        // logged out
+        if(statusBlock) statusBlock.style.display = '';
+        if(userCard) userCard.classList.add('hidden');
+        if(userInfoEl) userInfoEl.textContent = '';
+        if(btnLoginHeader) btnLoginHeader.style.display = '';
+        if(btnRegisterHeader) btnRegisterHeader.style.display = '';
+        document.querySelectorAll('.btn-logout').forEach(b => b.style.display = 'none');
       }
-    } catch (err) {
-      // ignore
+    } catch(err){
       console.warn('loadUser error', err);
+      if(statusBlock) statusBlock.style.display = '';
+      if(userCard) userCard.classList.add('hidden');
+      if(btnLoginHeader) btnLoginHeader.style.display = '';
+      if(btnRegisterHeader) btnRegisterHeader.style.display = '';
+      document.querySelectorAll('.btn-logout').forEach(b => b.style.display = 'none');
     }
   }
-  loadUser();
-}); // end DOMContentLoaded
+  window.loadUser = loadUser;
 
-// --- logout helpers (appended) ---
-(function(){
-  'use strict';
-
-  // Xoá local/session storage và (tùy ý) xoá cookie phía client
-  function clearAuthStateClientSide(){
+  async function clearAuthStateClientSide(){
     try {
-      // remove known auth keys
-      ['auth_token','auth_user','token','user'].forEach(k=>{
-        try{ localStorage.removeItem(k); }catch(e){}
-        try{ sessionStorage.removeItem(k); }catch(e){}
-      });
-      // remove all cookies (client-side) - note: HttpOnly cookies won't be removed here
-      document.cookie.split(';').forEach(c=>{
+      ['auth_token','auth_user','token','user'].forEach(k => { try{ localStorage.removeItem(k);}catch{}; try{ sessionStorage.removeItem(k);}catch{}; });
+      document.cookie.split(';').forEach(c => {
         const name = c.split('=')[0].trim();
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       });
-    } catch(e){
-      console.warn('clearAuthStateClientSide error', e);
-    }
+    } catch(e){ console.warn('clearAuthStateClientSide error', e); }
   }
 
-  // Call server logout endpoint then clear client state and reload UI
   async function doLogout(){
     try {
-      // try to call server logout if available
-      await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Accept': 'application/json' }
-      }).catch(()=>{}); // ignore network errors here
+      // default uses PHP logout; change path if your server uses another endpoint (e.g., /api/logout)
+      await fetch('/logout.php', { method: 'POST', credentials: 'include', headers: { 'Accept': 'application/json' } }).catch(()=>{});
     } catch(e){}
-    // Clear client-side tokens/state
-    clearAuthStateClientSide();
-    // Refresh user UI by calling loadUser() if present, otherwise reload page
-    if (typeof window.loadUser === 'function') {
-      try { await window.loadUser(); } catch(e) {}
-    }
-    // Finally, reload to ensure all UI reset
-    try { window.location.reload(); } catch(e){ window.location.href = '/'; }
+    await clearAuthStateClientSide();
+    try { await loadUser(); } catch(e){}
+    try { window.location.reload(); } catch(e) { window.location.href = '/'; }
   }
+  window.doLogout = doLogout;
 
-  // Attach to #btn-logout if exists (and also to any .btn-logout)
   function installLogoutButtons(){
-    const btn = document.getElementById('btn-logout');
-    if (btn && !btn._logoutInstalled) {
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        doLogout();
-      });
-      btn._logoutInstalled = true;
-    }
-    // support multiple elements with class
-    document.querySelectorAll('.btn-logout').forEach(b=>{
+    document.querySelectorAll('.btn-logout').forEach(b => {
       if(b._logoutInstalled) return;
-      b.addEventListener('click', (e)=>{ e.preventDefault(); doLogout(); });
+      b.addEventListener('click', (e)=>{ e.preventDefault(); doLogout(); }, { passive: false });
       b._logoutInstalled = true;
     });
   }
 
-  // Run on DOM ready (if script appended at end it's OK)
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', installLogoutButtons);
-  } else {
-    installLogoutButtons();
-  }
+  // --- Initialization sequence ---
+  populateSubjects();
+  installSubjectDelegation();
+  installLogoutButtons();
+  loadUser();
 
-  // expose for debugging
-  window.clearAuthStateClientSide = clearAuthStateClientSide;
-  window.doLogout = doLogout;
-})();
-async function doLogout(){
-  try {
-    // call server-side logout endpoint
-    await fetch('/logout.php', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Accept': 'application/json' }
-    }).catch(()=>{ /* ignore network errors */ });
-  } catch(e){
-    console.warn('logout fetch error', e);
-  }
-
-  // Clear client-side tokens/state (non-HttpOnly cookies can't be removed here)
-  try {
-    ['auth_token','auth_user','token','user'].forEach(k=>{
-      try{ localStorage.removeItem(k); }catch(e){}
-      try{ sessionStorage.removeItem(k); }catch(e){}
+  // attach test API button if present
+  const btnTest = document.getElementById('btn-test');
+  if(btnTest){
+    btnTest.addEventListener('click', async () => {
+      try {
+        const r = await fetch('/api/secure-test', { credentials: 'include' });
+        const text = await r.text();
+        const apiResult = document.getElementById('api-result');
+        if(apiResult) apiResult.textContent = `Status ${r.status}: ${text.slice(0,250)}`;
+      } catch(e){ console.error(e); }
     });
-    // best-effort clear cookies (HttpOnly cookies won't be affected)
-    document.cookie.split(';').forEach(c=>{
-      const name = c.split('=')[0].trim();
-      document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-    });
-  } catch(e){ console.warn('clear client auth state error', e); }
-
-  // Refresh UI
-  if (typeof window.loadUser === 'function') {
-    try { await window.loadUser(); } catch(e){}
   }
-  // final fallback: reload page
-  try { window.location.reload(); } catch(e){ window.location.href = '/'; }
-}
+
+}); // end DOMContentLoaded
