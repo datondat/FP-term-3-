@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Đăng nhập / Đăng ký — FP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="main.css">
+  <style>
+    /* Small overrides for auth box */
+    .auth-wrap { max-width:860px; margin:40px auto; display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:0 18px; }
+    .auth-box { background:var(--card, #fff); border:1px solid var(--border,#eee); border-radius:10px; padding:20px; box-shadow:var(--shadow,0 6px 18px rgba(0,0,0,0.04)); }
+    .auth-switch { display:flex; gap:8px; margin-bottom:12px; }
+    .switch-btn { padding:8px 12px; border-radius:8px; border:1px solid var(--border,#eee); background:transparent; cursor:pointer; font-weight:700; }
+    .switch-btn.active { background:var(--primary,#d17a23); color:#fff; border-color:var(--primary,#d17a23); }
+    form label { display:block; margin:10px 0 4px; font-weight:600; }
+    form input { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; }
+    .helper { margin-top:12px; font-size:0.95rem; color:var(--muted,#6c757d); }
+    .link-btn { background:none; border:0; color:var(--primary,#d17a23); cursor:pointer; font-weight:700; padding:0; }
+    .auth-footer { margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    @media (max-width:860px) {
+      .auth-wrap { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="auth-wrap">
+      <!-- LOGIN -->
+      <div class="auth-box" id="login-box" aria-labelledby="login-title">
+        <div class="auth-switch">
+          <button class="switch-btn active" id="show-login">Đăng nhập</button>
+          <button class="switch-btn" id="show-register">Đăng ký</button>
+        </div>
+        <h2 id="login-title">Đăng nhập</h2>
+        <form id="login-form" autocomplete="on">
+          <label for="li-username">Tên đăng nhập</label>
+          <input id="li-username" name="username" type="text" required>
+          <label for="li-password">Mật khẩu</label>
+          <input id="li-password" name="password" type="password" required>
+          <div style="margin-top:12px">
+            <button class="btn" type="submit">Đăng nhập</button>
+            <button type="button" class="btn btn-ghost" id="login-to-register">Chưa có tài khoản?</button>
+          </div>
+          <div id="login-msg" class="ok" style="display:none; margin-top:10px"></div>
+          <div id="login-err" class="err" style="display:none; margin-top:10px"></div>
+        </form>
+
+        <div class="auth-footer">
+          <div class="helper">Bạn có thể đăng nhập bằng tài khoản đã đăng ký.</div>
+          <div style="font-size:0.9rem;color:var(--muted)"><a href="index.html">Về trang chủ</a></div>
+        </div>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="auth-box" id="register-box" aria-labelledby="register-title" style="display:none">
+        <div class="auth-switch" style="margin-bottom:8px">
+          <button class="switch-btn" id="show-login-2">Đăng nhập</button>
+          <button class="switch-btn active" id="show-register-2">Đăng ký</button>
+        </div>
+        <h2 id="register-title">Đăng ký</h2>
+        <form id="register-form" autocomplete="on">
+          <label for="rg-username">Tên đăng nhập</label>
+          <input id="rg-username" name="username" type="text" required>
+          <label for="rg-display">Tên hiển thị (tuỳ chọn)</label>
+          <input id="rg-display" name="display_name" type="text">
+          <label for="rg-password">Mật khẩu</label>
+          <input id="rg-password" name="password" type="password" required minlength="6">
+          <div style="margin-top:12px">
+            <button class="btn" type="submit">Tạo tài khoản</button>
+            <button type="button" class="btn btn-ghost" id="register-to-login">Đã có tài khoản?</button>
+          </div>
+          <div id="reg-msg" class="ok" style="display:none; margin-top:10px"></div>
+          <div id="reg-err" class="err" style="display:none; margin-top:10px"></div>
+        </form>
+
+        <div class="auth-footer">
+          <div class="helper">Sau khi đăng ký bạn sẽ được tự động đăng nhập.</div>
+          <div style="font-size:0.9rem;color:var(--muted)"><a href="index.html">Về trang chủ</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Toggle visibility
+    const loginBox = document.getElementById('login-box');
+    const registerBox = document.getElementById('register-box');
+    const showLoginBtns = [document.getElementById('show-login'), document.getElementById('show-login-2')];
+    const showRegisterBtns = [document.getElementById('show-register'), document.getElementById('show-register-2')];
+
+    function setView(view) {
+      const loginActive = view === 'login';
+      loginBox.style.display = loginActive ? '' : 'none';
+      registerBox.style.display = loginActive ? 'none' : '';
+      showLoginBtns.forEach(b => b.classList.toggle('active', loginActive));
+      showRegisterBtns.forEach(b => b.classList.toggle('active', !loginActive));
+      // update hash for bookmarking / back button
+      location.hash = loginActive ? '' : '#register';
+    }
+
+    showLoginBtns.forEach(b => b.addEventListener('click', () => setView('login')));
+    showRegisterBtns.forEach(b => b.addEventListener('click', () => setView('register')));
+    document.getElementById('login-to-register').addEventListener('click', () => setView('register'));
+    document.getElementById('register-to-login').addEventListener('click', () => setView('login'));
+
+    // If URL has #register, show register view
+    if (location.hash === '#register') setView('register');
+
+    // Helpers
+    function show(elemId, text) {
+      const el = document.getElementById(elemId);
+      el.textContent = text || '';
+      el.style.display = text ? '' : 'none';
+    }
+    function clearAuthMsgs() {
+      ['login-msg','login-err','reg-msg','reg-err'].forEach(id => show(id,''));
+    }
+
+    // Submit handlers
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAuthMsgs();
+      const u = document.getElementById('li-username').value.trim();
+      const p = document.getElementById('li-password').value;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || 'Lỗi đăng nhập');
+        localStorage.setItem('token', j.token);
+        show('login-msg','Đăng nhập thành công. Đang chuyển hướng...');
+        setTimeout(() => location.href = '/', 600);
+      } catch (err) {
+        show('login-err', err.message);
+      }
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAuthMsgs();
+      const u = document.getElementById('rg-username').value.trim();
+      const d = document.getElementById('rg-display').value.trim();
+      const p = document.getElementById('rg-password').value;
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, display_name: d, password: p })
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || 'Lỗi đăng ký');
+        localStorage.setItem('token', j.token);
+        show('reg-msg','Đăng ký thành công. Đang chuyển hướng...');
+        setTimeout(() => location.href = '/', 700);
+      } catch (err) {
+        show('reg-err', err.message);
+      }
+    });
+
+    // If token exists, try to fetch profile and redirect to /
+    (async function autoRedirect() {
+      const t = localStorage.getItem('token');
+      if (!t) return;
+      try {
+        const r = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + t }});
+        if (r.ok) location.href = '/';
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+</body>
+</html>

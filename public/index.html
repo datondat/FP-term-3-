@@ -1,356 +1,333 @@
 <!doctype html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Giải Bài Tập Cấp 2-3</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/textbooks.css" />
-    <script src="/main.js" defer></script>
-    <script src="/textbooks.js" defer></script>
-  </head>
-  <body>
-    <!-- TOP HEADER -->
-    <header class="top-header">
-      <div class="header-left">
-        <img src="/images/bookshelf.jpg" alt="Bookshelf" class="bookshelf logo" />
+<head>
+  <meta charset="utf-8" />
+  <title>FP - Trang chủ</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 820px; margin: auto; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+    nav a { margin-right: 0.75rem; text-decoration:none; color:#0366d6; }
+    .card { border:1px solid #e1e4e8; padding:1rem; margin-top:1rem; border-radius:6px; }
+    .muted { color:#6a737d; }
+    button { padding:0.45rem 0.75rem; margin-right:0.5rem; cursor:pointer; }
+    .err { color:#b91c1c; margin-top:0.5rem; }
+    .ok { color:#065f46; margin-top:0.5rem; }
+    pre { background:#f6f8fa; padding:0.75rem; border-radius:6px; overflow:auto; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem; }
+    .grade { border:1px dashed #d1d5db; padding:0.75rem; border-radius:6px; background:#fafafa; }
+    .grade h4 { margin:0 0 0.5rem 0; }
+    ul { padding-left:1.1rem; margin:0; }
+    li { margin:0.25rem 0; }
+    .subject { color:#0b5; cursor:pointer; text-decoration:underline; }
+    .subject:hover { opacity:0.9; }
+    .small { font-size:0.9rem; color:#374151; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
+    .subject-detail { margin-top:1rem; display:none; }
+    .controls { margin-top:1rem; }
+    .card-hidden { display:none; margin-top:1rem; }
+    .user-actions { margin-top:0.75rem; }
+    .api-result { margin-top:0.75rem; white-space:pre-wrap; word-break:break-word; }
+    @media (max-width:640px){
+      .grid{grid-template-columns:1fr}
+      .two-col{grid-template-columns:1fr}
+      header{flex-direction:column;align-items:flex-start;gap:0.5rem}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 style="margin:0">FP — Hệ thống học tập</h1>
+      <div class="muted">Trang quản lý người dùng & danh sách môn theo lớp</div>
+    </div>
+    <nav id="nav">
+      <a href="register.html" id="link-register">Đăng ký</a>
+      <a href="login.html" id="link-login">Đăng nhập</a>
+      <a href="#" id="link-logout" style="display:none">Đăng xuất</a>
+    </nav>
+  </header>
+
+  <section class="card" id="main">
+    <h2 id="status-title">Bạn chưa đăng nhập</h2>
+    <div id="status-desc" class="muted">Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.</div>
+
+    <div id="controls" style="margin-top:1rem">
+      <a href="login.html"><button id="btn-login">Đăng nhập</button></a>
+      <a href="register.html"><button id="btn-register">Đăng ký</button></a>
+      <button id="btn-refresh" style="display:none">Lấy thông tin tài khoản</button>
+    </div>
+
+    <div id="user-card" style="display:none; margin-top:1rem">
+      <h3>Thông tin tài khoản</h3>
+      <div id="user-info" class="muted"></div>
+      <div style="margin-top:0.75rem">
+        <button id="btn-logout">Đăng xuất</button>
+        <button id="btn-test">Gọi API bảo mật (/api/profile)</button>
       </div>
+      <div id="api-result" style="margin-top:0.75rem"></div>
+    </div>
 
-      <nav class="menu-class" aria-label="Menu lớp">
-        <a href="#" data-class="Lớp 6">Lớp 6</a>
-        <a href="#" data-class="Lớp 7">Lớp 7</a>
-        <a href="#" data-class="Lớp 8">Lớp 8</a>
-        <a href="#" data-class="Lớp 9">Lớp 9</a>
-        <a href="#" data-class="Lớp 10">Lớp 10</a>
-        <a href="#" data-class="Lớp 11">Lớp 11</a>
-        <a href="#" data-class="Lớp 12">Lớp 12</a>
-        <a href="#" data-class="Giáo án - Đề thi">Giáo án - Đề thi</a>
-        <a href="/upload-assignment.html" class="menu-upload">Upload</a>
-      </nav>
+    <div id="messages">
+      <div id="msg" class="ok" style="display:none"></div>
+      <div id="err" class="err" style="display:none"></div>
+    </div>
+  </section>
 
-      <div class="header-right">
-        <form class="search-form" id="searchForm">
-          <input class="search-input" name="q" type="search" placeholder="Tìm kiếm môn, tài liệu..." aria-label="Tìm kiếm" />
-          <button class="search-btn" type="submit" aria-label="Tìm">🔍</button>
-        </form>
-        <div class="user-area">
-          <img src="/images/avatar.png" alt="Avatar" class="avatar" id="avatarBtn" title="Tài khoản" />
-          <div class="dropdown" id="userDropdown" aria-hidden="true">
-            <div id="userNotLogged">
-              <a href="#" class="dropdown-item" id="openLogin">Đăng nhập</a>
-              <a href="#" class="dropdown-item">Đăng ký</a>
-            </div>
-            <div id="userLogged" style="display: none">
-              <div class="dropdown-item" id="userNameDisplay"></div>
-              <a href="#" class="dropdown-item" id="logoutBtn">Đăng xuất</a>
-            </div>
+  <section class="card">
+    <h3>Danh sách môn theo nhóm lớp</h3>
+    <p class="small">Nhấp vào môn để xem mô tả mẫu. Danh sách bao gồm hai nhóm: Lớp 6–9 và Lớp 10–12.</p>
+
+    <div class="grid">
+      <div class="grade">
+        <h4>Lớp 6 — 9</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <div>
+            <strong>Lớp 6</strong>
+            <ul id="grade-6"></ul>
           </div>
-        </div>
-      </div>
-    </header>
-
-    <!-- MAIN CONTENT (below header) -->
-    <main id="mainContent">
-      <!-- INLINE LOGIN (ẩn mặc định) -->
-      <section id="inlineLogin" class="inline-login hidden" aria-hidden="true">
-        <h2>Đăng nhập</h2>
-        <form id="inlineLoginForm" class="inline-login-form">
-          <label>Username <input type="text" name="username" required /></label>
-          <label>Password <input type="password" name="password" required /></label>
-          <div class="inline-actions">
-            <button type="submit" class="btn">Đăng nhập</button>
-            <button type="button" class="btn btn-ghost" id="inlineCancel">Hủy</button>
+          <div>
+            <strong>Lớp 7</strong>
+            <ul id="grade-7"></ul>
           </div>
-        </form>
-      </section>
-
-      <!-- SERVICES -->
-      <div class="service-area" id="serviceArea">
-        <div class="service-title">WEB HỌC TẬP</div>
-        <div class="services">
-          <div class="service-box"><div class="icon">📝</div><div class="name">Giải bài tập SGK & SBT</div></div>
-          <div class="service-box"><div class="icon">📚</div><div class="name">Sách</div></div>
-          <div class="service-box"><div class="icon">🎓</div><div class="name">Khóa học</div></div>
-          <a href="/upload-assignment.html" class="service-box service-box-upload" aria-label="Upload tài liệu"><div class="icon">⬆️</div><div class="name">Upload tài liệu</div></a>
-        </div>
-      </div>
-
-      <!-- CATEGORY / ACCORDION (all classes listed) -->
-      <div class="category-area" id="categoryArea">
-        <div class="category-title">Danh mục giải bài tập và soạn bài</div>
-        <div class="category-intro">Click vào nút Lớp ở menu trên để xem các môn.</div>
-
-        <div class="accordion" id="classAccordion">
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 6" type="button"><span>Lớp 6</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 6. Bao gồm SGK, SBT, bài tập và hướng dẫn.</p></div>
+          <div>
+            <strong>Lớp 8</strong>
+            <ul id="grade-8"></ul>
           </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 7" type="button"><span>Lớp 7</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 7. Bài tập, sách và tài liệu tham khảo.</p></div>
-          </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 8" type="button"><span>Lớp 8</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 8. Gồm Toán, Vật lý, Hóa học, Ngữ văn...</p></div>
-          </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 9" type="button"><span>Lớp 9</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 9. Tài liệu ôn thi và bài giải mẫu.</p></div>
-          </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 10" type="button"><span>Lớp 10</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 10. Thích hợp cho năm học THPT.</p></div>
-          </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 11" type="button"><span>Lớp 11</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 11. Gồm bài giảng, bài tập và đề kiểm tra.</p></div>
-          </div>
-
-          <div class="accordion-item">
-            <button class="accordion-button" data-class="Lớp 12" type="button"><span>Lớp 12</span><span class="arrow">&#9654;</span></button>
-            <div class="accordion-panel"><p>Nội dung tóm tắt cho lớp 12. Tài liệu ôn thi đại học và đề thi thử.</p></div>
+          <div>
+            <strong>Lớp 9</strong>
+            <ul id="grade-9"></ul>
           </div>
         </div>
       </div>
 
-      <!-- SUBJECTS VIEW (list of subjects for a chosen class) -->
-      <div id="subjectsView" class="subjects-view hidden" aria-hidden="true">
-        <div class="subjects-header">
-          <button id="backToClasses" class="btn btn-ghost">← Quay lại</button>
-          <h2 id="subjectsTitle">Các môn</h2>
+      <div class="grade">
+        <h4>Lớp 10 — 12</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <div>
+            <strong>Lớp 10</strong>
+            <ul id="grade-10"></ul>
+          </div>
+          <div>
+            <strong>Lớp 11</strong>
+            <ul id="grade-11"></ul>
+          </div>
+          <div>
+            <strong>Lớp 12</strong>
+            <ul id="grade-12"></ul>
+          </div>
+          <div>
+            <strong>Chung</strong>
+            <ul id="grade-common"></ul>
+          </div>
         </div>
-        <div id="subjectsGrid" class="subjects-grid"></div>
       </div>
+    </div>
 
-      <!-- RESOURCES VIEW: when user clicks a subject, hide everything under header and show this -->
-      <div id="resourcesView" class="resources-view hidden" aria-hidden="true">
-        <div class="resources-header">
-          <button id="resourcesBack" class="btn btn-ghost">← Quay lại</button>
-          <h2 id="resourcesTitle">Tài liệu</h2>
-        </div>
-        <div id="resourcesBody" class="resources-body">
-          <!-- textbooks.js can render HTML here (uses same markup as textbooks page) -->
-        </div>
-      </div>
-    </main>
+    <div id="subject-detail" style="margin-top:1rem; display:none">
+      <h4 id="subject-title"></h4>
+      <div id="subject-desc" class="muted"></div>
+    </div>
+  </section>
 
-    <footer class="site-footer">
-      <div class="container">© FP-term-3</div>
-    </footer>
+  <section class="card" style="margin-top:1rem">
+    <h3>Ghi chú</h3>
+    <ul>
+      <li>Đăng ký → đăng nhập → quay về trang chủ để thấy thông tin tài khoản.</li>
+      <li>Đây là giao diện demo; bạn có thể kết nối danh sách môn với backend để load từ DB.</li>
+    </ul>
+    <pre id="debug" style="display:none"></pre>
+  </section>
 
-    <script>
-      // --- hardcoded class -> subjects map (keeps original behavior) ---
-      const classSubjects = {
-        "Lớp 6": ["Toán","Ngữ văn","Tiếng Anh","Khoa học tự nhiên","Lịch sử","Địa lý","Tin học"],
-        "Lớp 7": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Sinh học","Công nghệ","Tin học"],
-        "Lớp 8": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Lịch sử","Địa lý"],
-        "Lớp 9": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Công nghệ"],
-        "Lớp 10": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","GDCD"],
-        "Lớp 11": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Tin học"],
-        "Lớp 12": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử"],
-        "Giáo án - Đề thi": ["Đề thi THCS","Đề thi THPT","Giáo án mẫu"]
-      };
+  <script>
+    const subjectsByGrade = {
+      6: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Khoa học tự nhiên', 'Lịch sử', 'Địa lí', 'Tin học', 'Công nghệ', 'GDCD'],
+      7: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'Công nghệ'],
+      8: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'Tin học'],
+      9: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'GDQPAN'],
+      10: ['Toán (Tự chọn/Chuyên)', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'GDCD'],
+      11: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'GDQPAN'],
+      12: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'Lịch sử & Địa lí'],
+      common: ['Giáo dục công dân', 'Công nghệ', 'Khoa học tự nhiên', 'Giáo dục kinh tế và pháp luật']
+    };
 
-      // Optional: if you have a mapping from class name -> numeric class_id in DB,
-      // set the map here (e.g. { "Lớp 6": 3, "Lớp 7": 4, ... })
-      // If set, the script will try to fetch dynamic subjects from /api/classes/:id/subjects
-      const classNameToId = {
-        // "Lớp 6": 1,
-        // "Lớp 7": 2
-      };
+    const gradeEls = {
+      6: document.getElementById('grade-6'),
+      7: document.getElementById('grade-7'),
+      8: document.getElementById('grade-8'),
+      9: document.getElementById('grade-9'),
+      10: document.getElementById('grade-10'),
+      11: document.getElementById('grade-11'),
+      12: document.getElementById('grade-12'),
+      common: document.getElementById('grade-common')
+    };
 
-      const serviceArea = document.getElementById('serviceArea');
-      const categoryArea = document.getElementById('categoryArea');
-      const subjectsView = document.getElementById('subjectsView');
-      const resourcesView = document.getElementById('resourcesView');
-
-      // try to fetch subjects from API (by class id). If fails, return null to indicate fallback needed.
-      async function fetchSubjectsFromApi(classId) {
-        if (!classId) return null;
-        try {
-          const resp = await fetch('/api/classes/' + encodeURIComponent(classId) + '/subjects');
-          if (!resp.ok) return null;
-          const j = await resp.json();
-          if (!j.ok || !Array.isArray(j.subjects)) return null;
-          // transform into array of titles
-          return j.subjects.map(s => s.title);
-        } catch (err) {
-          return null;
-        }
-      }
-
-      // show subjects for a className; prefer API when mapping available
-      async function showSubjects(className) {
-        const subjectsFromMap = classSubjects[className] || [];
-        const grid = document.getElementById("subjectsGrid");
-        const title = document.getElementById("subjectsTitle");
-        grid.innerHTML = "";
-        title.textContent = `Các môn của ${className}`;
-
-        // if we have className->id mapping, try API first
-        const classId = classNameToId[className] || null;
-        let subjects = null;
-        if (classId) {
-          const apiList = await fetchSubjectsFromApi(classId);
-          if (apiList && apiList.length) subjects = apiList;
-        }
-
-        // fallback to hardcoded map
-        if (!subjects) subjects = subjectsFromMap;
-
-        if (!subjects || subjects.length === 0) {
-          grid.innerHTML = "<p>Chưa có môn cho lớp này.</p>";
-        } else {
-          subjects.forEach((sub) => {
-            const card = document.createElement("div");
-            card.className = "subject-card";
-            card.innerHTML = `
-              <div class="subject-name">${sub}</div>
-              <div style="display:flex;gap:8px;justify-content:center">
-                <button class="btn view-subject inline" data-sub="${sub}" data-class="${className}">Xem sách</button>
-              </div>
-            `;
-            grid.appendChild(card);
-          });
-        }
-
-        // show subjects view, hide other main content parts (except header)
-        serviceArea.classList.add('hidden');
-        categoryArea.classList.add('hidden');
-        resourcesView.classList.add('hidden');
-        subjectsView.classList.remove('hidden');
-        subjectsView.setAttribute("aria-hidden","false");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-
-      function hideSubjects() {
-        subjectsView.classList.add('hidden');
-        subjectsView.setAttribute('aria-hidden','true');
-        serviceArea.classList.remove('hidden');
-        categoryArea.classList.remove('hidden');
-      }
-
-      // show resources inline for a given class+subject
-      async function showResourcesInline(className, subject) {
-        // hide everything under header
-        serviceArea.classList.add('hidden');
-        categoryArea.classList.add('hidden');
-        subjectsView.classList.add('hidden');
-
-        const resourcesBody = document.getElementById('resourcesBody');
-        const resourcesTitle = document.getElementById('resourcesTitle');
-        resourcesTitle.textContent = `${subject} — ${className}`;
-
-        // load textbooks data via Textbooks.loadData() (textbooks.js exposes this)
-        try {
-          const data = await window.Textbooks.loadData();
-          const books = (data[className] || {})[subject] || [];
-          // render HTML using the same helper exposed by textbooks.js
-          const html = window.Textbooks.renderBooksListHTML
-            ? window.Textbooks.renderBooksListHTML(className, subject, books)
-            : (books.length ? books.map(b => `<div>${b.title} — <a href="${b.link}" target="_blank">Xem</a></div>`).join('') : '<div class="muted">Chưa có sách.</div>');
-
-          resourcesBody.innerHTML = html;
-        } catch (err) {
-          resourcesBody.innerHTML = '<div class="muted">Lỗi tải dữ liệu sách.</div>';
-        }
-
-        resourcesView.classList.remove('hidden');
-        resourcesView.setAttribute('aria-hidden','false');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-
-      // attach top menu handlers
-      document.querySelectorAll(".menu-class a[data-class]").forEach((a) => {
-        a.addEventListener("click", function (e) {
-          e.preventDefault();
-          const cls = this.dataset.class;
-          showSubjects(cls);
-        });
-      });
-
-      // accordion buttons also show subjects
-      document.querySelectorAll(".accordion-button").forEach((btn) => {
-        btn.addEventListener("click", function (e) {
-          e.preventDefault();
-          const cls = this.dataset.class;
-          showSubjects(cls);
-        });
-      });
-
-      // delegate clicks for inline "Xem sách" buttons in subjects grid
-      document.addEventListener('click', function (e) {
-        const btn = e.target.closest && e.target.closest('.view-subject.inline');
-        if (!btn) return;
-        const sub = btn.dataset.sub;
-        const cls = btn.dataset.class;
-        showResourcesInline(cls, sub);
-      });
-
-      // resources back button
-      document.getElementById('resourcesBack').addEventListener('click', function () {
-        // go back to subjects list if it was visible previously; otherwise restore main content
-        resourcesView.classList.add('hidden');
-        resourcesView.setAttribute('aria-hidden','true');
-        // show category & services (user can click class again)
-        serviceArea.classList.remove('hidden');
-        categoryArea.classList.remove('hidden');
-        // clear body
-        document.getElementById('resourcesBody').innerHTML = '';
-      });
-
-      // subjects back button returns to main category view
-      document.getElementById('backToClasses').addEventListener('click', hideSubjects);
-
-      // search handler (unchanged)
-      document.getElementById("searchForm").addEventListener("submit", async (e) => {
+    function createSubjectItem(name) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.textContent = name;
+      a.href = '#';
+      a.className = 'subject';
+      a.addEventListener('click', (e) => {
         e.preventDefault();
-        const q = new FormData(e.target).get("q") || "";
-        try {
-          const res = await fetch("/api/search?q=" + encodeURIComponent(q));
-          const data = await res.json();
-          alert("Kết quả: " + (data.results && data.results.length ? data.results.map((r) => r.title).join(", ") : "Không có"));
-        } catch (err) { alert("Lỗi tìm kiếm"); }
+        showSubjectDetail(name);
       });
+      li.appendChild(a);
+      return li;
+    }
 
-      // inline login open/cancel (unchanged)
-      document.getElementById("openLogin").addEventListener("click", (e) => {
-        e.preventDefault();
-        const inline = document.getElementById("inlineLogin");
-        inline.classList.remove("hidden");
-        inline.scrollIntoView({ behavior: "smooth", block: "center" });
-        inline.querySelector('input[name="username"]').focus();
-        document.getElementById("userDropdown").classList.remove("open");
-      });
-      document.getElementById("inlineCancel").addEventListener("click", () => {
-        document.getElementById("inlineLogin").classList.add("hidden");
-      });
-
-      // load user (unchanged)
-      async function loadUser() {
-        try {
-          const r = await fetch("/api/me");
-          const j = await r.json();
-          const logged = j.user;
-          const userNot = document.getElementById("userNotLogged");
-          const userLogged = document.getElementById("userLogged");
-          const userNameDisplay = document.getElementById("userNameDisplay");
-          if (logged) {
-            userNot.style.display = "none";
-            userLogged.style.display = "block";
-            userNameDisplay.textContent = logged.displayName || logged.username;
-          } else {
-            userNot.style.display = "block";
-            userLogged.style.display = "none";
-          }
-        } catch (err) {}
+    function populateSubjects() {
+      for (const g of [6,7,8,9,10,11,12]) {
+        const list = subjectsByGrade[g] || [];
+        const container = gradeEls[g];
+        container.innerHTML = '';
+        list.forEach(s => container.appendChild(createSubjectItem(s)));
       }
-      loadUser();
-    </script>
-  </body>
+      gradeEls.common.innerHTML = '';
+      (subjectsByGrade.common || []).forEach(s => gradeEls.common.appendChild(createSubjectItem(s)));
+    }
+
+    function showSubjectDetail(name) {
+      document.getElementById('subject-title').textContent = name;
+      document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}". Bạn có thể liên kết môn này tới DB hoặc trang khóa học cụ thể.`;
+      document.getElementById('subject-detail').style.display = 'block';
+      window.scrollTo({ top: document.getElementById('subject-detail').offsetTop - 20, behavior: 'smooth' });
+    }
+
+    // --- Authentication UI (keeps previous behavior) ---
+    const nav = document.getElementById('nav');
+    const linkLogin = document.getElementById('link-login');
+    const linkRegister = document.getElementById('link-register');
+    const linkLogout = document.getElementById('link-logout');
+
+    const statusTitle = document.getElementById('status-title');
+    const statusDesc = document.getElementById('status-desc');
+    const controls = document.getElementById('controls');
+    const btnRefresh = document.getElementById('btn-refresh');
+
+    const userCard = document.getElementById('user-card');
+    const userInfo = document.getElementById('user-info');
+    const apiResult = document.getElementById('api-result');
+
+    const msgEl = document.getElementById('msg');
+    const errEl = document.getElementById('err');
+    const debugEl = document.getElementById('debug');
+
+    const btnLogout = document.getElementById('btn-logout');
+    const btnTest = document.getElementById('btn-test');
+
+    function showMsg(text) { msgEl.style.display='block'; msgEl.textContent = text; errEl.style.display='none'; }
+    function showErr(text) { errEl.style.display='block'; errEl.textContent = text; msgEl.style.display='none'; }
+    function hideMsgs() { msgEl.style.display='none'; errEl.style.display='none'; }
+
+    function token() { return localStorage.getItem('token'); }
+
+    async function fetchProfile() {
+      hideMsgs();
+      apiResult.textContent = '';
+      const t = token();
+      if (!t) {
+        setLoggedOutUI();
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + t }});
+        const j = await res.json();
+        if (!res.ok) {
+          showErr(j.error || 'Không thể lấy thông tin');
+          setLoggedOutUI();
+          return;
+        }
+        setLoggedInUI(j.user);
+      } catch (e) {
+        showErr('Lỗi kết nối: ' + e.message);
+      }
+    }
+
+    function setLoggedInUI(user) {
+      statusTitle.textContent = 'Bạn đã đăng nhập';
+      statusDesc.textContent = 'Xin chào, ' + (user.display_name || user.username);
+      linkLogin.style.display = 'none';
+      linkRegister.style.display = 'none';
+      linkLogout.style.display = 'inline';
+      controls.style.display = 'none';
+      userCard.style.display = 'block';
+      userInfo.innerHTML = `
+        <strong>${escapeHtml(user.display_name || user.username)}</strong>
+        <div class="muted">role: ${escapeHtml(user.role || '')}</div>
+        <div class="muted">created_at: ${escapeHtml(user.created_at || '')}</div>
+      `;
+      debugEl.style.display = 'none';
+      btnRefresh.style.display = 'none';
+    }
+
+    function setLoggedOutUI() {
+      statusTitle.textContent = 'Bạn chưa đăng nhập';
+      statusDesc.textContent = 'Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.';
+      linkLogin.style.display = 'inline';
+      linkRegister.style.display = 'inline';
+      linkLogout.style.display = 'none';
+      controls.style.display = 'block';
+      userCard.style.display = 'none';
+      apiResult.textContent = '';
+      debugEl.style.display = 'none';
+      btnRefresh.style.display = 'inline';
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // on page load
+    (function init() {
+      populateSubjects();
+      if (token()) {
+        fetchProfile();
+      } else {
+        setLoggedOutUI();
+      }
+    })();
+
+    // events
+    linkLogout.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('token');
+      showMsg('Đã đăng xuất.');
+      setLoggedOutUI();
+    });
+    btnLogout.addEventListener('click', () => {
+      localStorage.removeItem('token');
+      showMsg('Đã đăng xuất.');
+      setLoggedOutUI();
+    });
+
+    btnTest.addEventListener('click', async () => {
+      apiResult.textContent = '';
+      const t = token();
+      if (!t) { showErr('Không có token.'); return; }
+      try {
+        const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + t }});
+        const j = await res.json();
+        if (!res.ok) {
+          apiResult.textContent = 'Lỗi: ' + (j.error || JSON.stringify(j));
+          return;
+        }
+        apiResult.textContent = JSON.stringify(j, null, 2);
+      } catch (e) {
+        apiResult.textContent = 'Lỗi kết nối: ' + e.message;
+      }
+    });
+
+    btnRefresh.addEventListener('click', () => {
+      fetchProfile();
+    });
+
+    window.addEventListener('storage', (ev) => {
+      if (ev.key === 'token') {
+        fetchProfile();
+      }
+    });
+  </script>
+</body>
 </html>

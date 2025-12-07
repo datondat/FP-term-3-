@@ -1,89 +1,103 @@
-// src/routes/auth.js
+// server/auth.js
 const express = require('express');
+const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { pool } = require('../db');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
-const SALT_ROUNDS = 10;
 
-// Register
-router.post('/register', async (req, res) => {
-  const { username, email, password, displayName } = req.body || {};
-  if (!username || !password) return res.status(400).json({ ok: false, error: 'username and password required' });
-  try {
-    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-    const client = await pool.connect();
-    try {
-      const insert = await client.query(
-        `INSERT INTO users (username, email, password_hash, display_name)
-         VALUES ($1,$2,$3,$4)
-         ON CONFLICT (username) DO NOTHING
-         RETURNING id, username, email, display_name`,
-        [username, email || null, hashed, displayName || null]
-      );
-      if (!insert.rows[0]) return res.status(400).json({ ok: false, error: 'username already exists' });
-      const user = insert.rows[0];
-      const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ ok: true, user: { id: user.id, username: user.username, displayName: user.display_name }, token });
-    } finally { client.release(); }
-  } catch (err) {
-    console.error('register error', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+const pool = new Pool({
+  host: process.env.PGHOST || 'localhost',
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD || '',
+  database: process.env.PGDATABASE || 'fp',
+  port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432
 });
 
-// Login
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ ok: false, error: 'username and password required' });
-  try {
-    const client = await pool.connect();
-    try {
-      const r = await client.query('SELECT id, username, password_hash, display_name FROM users WHERE username=$1 LIMIT 1', [username]);
-      const user = r.rows[0];
-      if (!user) return res.status(401).json({ ok: false, error: 'invalid credentials' });
-      const okPass = await bcrypt.compare(password, user.password_hash || '');
-      if (!okPass) return res.status(401).json({ ok: false, error: 'invalid credentials' });
-      const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ ok: true, user: { id: user.id, username: user.username, displayName: user.display_name }, token });
-    } finally { client.release(); }
-  } catch (err) {
-    console.error('login error', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-to-a-secure-secret';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const BCRYPT_ROUNDS = process.env.BCRYPT_ROUNDS ? parseInt(process.env.BCRYPT_ROUNDS, 10) : 10;
 
-// Middleware to protect endpoints
-function authMiddleware(req, res, next) {
-  const h = req.headers.authorization || '';
-  const m = h.match(/^Bearer (.+)$/);
-  if (!m) return res.status(401).json({ ok: false, error: 'missing token' });
-  const token = m[1];
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.userId, username: payload.username };
-    return next();
-  } catch (err) {
-    return res.status(401).json({ ok: false, error: 'invalid token' });
-  }
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-// Get current user (require token)
-router.get('/me', authMiddleware, async (req, res) => {
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
   try {
+    const { username, password, display_name } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+
     const client = await pool.connect();
     try {
-      const r = await client.query('SELECT id, username, email, display_name FROM users WHERE id=$1 LIMIT 1', [req.user.id]);
-      if (!r.rows[0]) return res.status(404).json({ ok: false, error: 'user not found' });
-      const u = r.rows[0];
-      res.json({ ok: true, user: { id: u.id, username: u.username, displayName: u.display_name, email: u.email } });
-    } finally { client.release(); }
+      const check = await client.query('SELECT id FROM users WHERE username = $1 LIMIT 1', [username]);
+      if (check.rowCount > 0) return res.status(409).json({ error: 'Username already registered' });
+
+      const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+      const role = 'student';
+      const insert = await client.query(
+        `INSERT INTO users (username, display_name, password_hash, role)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, username, display_name, role, created_at`,
+        [username, display_name || null, password_hash, role]
+      );
+
+      const user = insert.rows[0];
+      const token = generateToken({ userId: user.id, username: user.username, role: user.role });
+
+      return res.status(201).json({ user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role }, token });
+    } finally {
+      client.release();
+    }
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    console.error('register error', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
+
+    const client = await pool.connect();
+    try {
+      const lookup = await client.query('SELECT id, username, display_name, password_hash, role FROM users WHERE username = $1 LIMIT 1', [username]);
+      if (lookup.rowCount === 0) return res.status(401).json({ error: 'Invalid credentials' });
+      const user = lookup.rows[0];
+      const ok = await bcrypt.compare(password, user.password_hash);
+      if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+
+      const token = generateToken({ userId: user.id, username: user.username, role: user.role });
+      return res.json({ user: { id: user.id, username: user.username, display_name: user.display_name, role: user.role }, token });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('login error', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/auth/me
+router.get('/me', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+  const token = auth.slice(7);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const client = await pool.connect();
+    try {
+      const q = await client.query('SELECT id, username, display_name, role, created_at FROM users WHERE id = $1 LIMIT 1', [payload.userId]);
+      if (q.rowCount === 0) return res.status(404).json({ error: 'User not found' });
+      return res.json({ user: q.rows[0] });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
   }
 });
 
 module.exports = router;
-module.exports.authMiddleware = authMiddleware;
