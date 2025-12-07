@@ -1,12 +1,12 @@
 ﻿-- db/all_migrations.sql
--- CLEAN, ROBUST, IDMPOTENT MIGRATION (fixed: guard index/DDL that referenced missing columns)
+-- CLEAN, ROBUST, IDMPOTENT MIGRATION (fixed: reliable insertion logic for subjects)
 -- Purpose: create core tables/indexes (safely if missing), ensure subjects table has a usable text column,
 -- insert canonical subject rows if missing, and map class -> subjects by grade.
 -- Notes:
---  - This file is defensive: it avoids referencing columns that don't exist and avoids failing if objects already exist.
---  - It sets client encoding to UTF8 so psql reads the file correctly.
---  - It is safe to run multiple times (idempotent).
---  - Run this after backing up your DB.
+--  - Defensive: avoids referencing columns that don't exist and avoids failing if objects already exist.
+--  - Sets client encoding to UTF8 so psql reads the file correctly.
+--  - Idempotent: safe to run multiple times.
+--  - Backup your DB before running on production.
 
 SET client_encoding = 'UTF8';
 
@@ -89,14 +89,12 @@ BEGIN
     EXECUTE 'CREATE INDEX IF NOT EXISTS idx_class_subjects_class ON class_subjects (class_id)';
   END IF;
 
-  -- idx_drive_folders_class_subject: only create if drive_folders table and column exist
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='drive_folders' AND column_name='class_subject_id') THEN
     EXECUTE 'CREATE INDEX IF NOT EXISTS idx_drive_folders_class_subject ON drive_folders (class_subject_id)';
   ELSE
     RAISE NOTICE 'Skipping idx_drive_folders_class_subject: drive_folders.class_subject_id missing';
   END IF;
 
-  -- idx_attachments_drive_parent: only if attachments.drive_parent_folder_id exists
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attachments' AND column_name='drive_parent_folder_id') THEN
     EXECUTE 'CREATE INDEX IF NOT EXISTS idx_attachments_drive_parent ON attachments (drive_parent_folder_id)';
   ELSE
@@ -107,6 +105,7 @@ $$ LANGUAGE plpgsql;
 
 -- -----------------------
 -- 5) Insert canonical subject rows safely (idempotent)
+--    (This block uses explicit branches to avoid mismatched column/value counts.)
 -- -----------------------
 DO $$
 DECLARE
@@ -115,61 +114,67 @@ DECLARE
     'Khoa học tự nhiên','Công nghệ','Tin học','Lịch sử','Địa lí',
     'Giáo dục kinh tế và pháp luật','Vật lí','Hoá học','Sinh học'
   ];
-  col_list text[] := ARRAY[]::text[];
+  has_title boolean;
+  has_name boolean;
+  has_subject boolean;
+  has_class_id boolean;
   match_expr text;
-  insert_cols text[];
   default_class_id integer;
   subj text;
   i int;
-  sql text;
 BEGIN
+  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='title') INTO has_title;
+  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='name') INTO has_name;
+  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='subject') INTO has_subject;
+  SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='class_id') INTO has_class_id;
+
   SELECT id INTO default_class_id FROM classes ORDER BY id LIMIT 1;
 
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='title') THEN
-    col_list := array_append(col_list, 'title');
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='name') THEN
-    col_list := array_append(col_list, 'name');
-  END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='subject') THEN
-    col_list := array_append(col_list, 'subject');
-  END IF;
-
-  IF array_length(col_list,1) IS NULL THEN
-    RAISE EXCEPTION 'subjects table has no title|name|subject column';
-  END IF;
-
-  IF array_length(col_list,1) = 1 THEN
-    match_expr := col_list[1];
+  -- Determine match expression (use only available columns)
+  IF has_title AND has_name THEN
+    match_expr := 'COALESCE(title,name)';
+  ELSIF has_title THEN
+    match_expr := 'title';
+  ELSIF has_name THEN
+    match_expr := 'name';
+  ELSIF has_subject THEN
+    match_expr := 'subject';
   ELSE
-    match_expr := 'COALESCE(' || array_to_string(col_list, ',') || ')';
+    RAISE EXCEPTION 'subjects table has no title|name|subject column';
   END IF;
 
   FOR i IN array_lower(wanted,1)..array_upper(wanted,1) LOOP
     subj := wanted[i];
 
-    insert_cols := ARRAY[]::text[];
-    IF array_position(col_list, 'name') IS NOT NULL THEN insert_cols := array_append(insert_cols,'name'); END IF;
-    IF array_position(col_list, 'title') IS NOT NULL THEN insert_cols := array_append(insert_cols,'title'); END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='class_id') THEN insert_cols := array_append(insert_cols,'class_id'); END IF;
-
-    sql := 'INSERT INTO subjects(' || array_to_string(insert_cols, ',') || ') SELECT ';
-    -- values
-    IF array_position(insert_cols,'name') IS NOT NULL THEN sql := sql || quote_literal(subj); END IF;
-    IF array_position(insert_cols,'title') IS NOT NULL THEN
-      IF sql NOT LIKE '%SELECT %' THEN sql := sql || ', '; END IF;
-      sql := sql || quote_literal(subj);
+    -- Cases covering combinations of available columns.
+    IF has_name AND has_title AND has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(name,title,class_id) SELECT $1,$1,$2 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj, COALESCE(default_class_id, 0);
+    ELSIF has_name AND has_title AND NOT has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(name,title) SELECT $1,$1 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj;
+    ELSIF has_name AND NOT has_title AND has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(name,class_id) SELECT $1,$2 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj, COALESCE(default_class_id, 0);
+    ELSIF has_name AND NOT has_title AND NOT has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(name) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj;
+    ELSIF has_title AND NOT has_name AND has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(title,class_id) SELECT $1,$2 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj, COALESCE(default_class_id, 0);
+    ELSIF has_title AND NOT has_name AND NOT has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(title) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj;
+    ELSIF NOT has_name AND NOT has_title AND has_subject AND has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(subject,class_id) SELECT $1,$2 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj, COALESCE(default_class_id, 0);
+    ELSIF NOT has_name AND NOT has_title AND has_subject AND NOT has_class_id THEN
+      EXECUTE format('INSERT INTO subjects(subject) SELECT $1 WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE %s = $1)', match_expr)
+        USING subj;
+    ELSE
+      -- No suitable column to insert; skip and notice
+      RAISE NOTICE 'Skipping insert for subject "%" because no suitable target column exists', subj;
     END IF;
-    IF array_position(insert_cols,'class_id') IS NOT NULL THEN
-      IF default_class_id IS NOT NULL THEN
-        sql := sql || ', ' || default_class_id::text;
-      ELSE
-        sql := sql || ', 0';
-      END IF;
-    END IF;
-
-    sql := sql || ' WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE ' || match_expr || ' = ' || quote_literal(subj) || ')';
-    EXECUTE sql;
   END LOOP;
 END;
 $$ LANGUAGE plpgsql;
