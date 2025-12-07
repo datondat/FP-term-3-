@@ -8,6 +8,51 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="main.css">
 </head>
+<script>
+  // fallback: populate subjects if external index.js không chạy
+  (function(){
+    const subjectsByGrade = {
+      6:['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
+      7:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
+      8:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
+      9:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
+      10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
+      11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
+      12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
+      common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
+    };
+    function createItem(name, grade){
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'subject';
+      a.textContent = name;
+      a.setAttribute('data-desc', `Mô tả mẫu cho môn "${name}".`);
+      a.addEventListener('click', function(e){
+        e.preventDefault();
+        document.getElementById('subject-title').textContent = name;
+        document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}".`;
+        document.getElementById('subject-detail').style.display = 'block';
+      });
+      li.appendChild(a);
+      return li;
+    }
+    function populateFallback(){
+      Object.keys(subjectsByGrade).forEach(function(g){
+        const ul = document.getElementById('grade-' + g);
+        if(!ul) return;
+        if(ul.children.length === 0){
+          subjectsByGrade[g].forEach(n => ul.appendChild(createItem(n, g)));
+        }
+      });
+      console.info('[FP fallback] subjects populated');
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', populateFallback);
+    } else populateFallback();
+  })();
+</script>
+</body>
 <body>
   <header class="top-header">
     <div class="header-left">
@@ -26,7 +71,7 @@
       <a href="#" class="menu-item">Lớp 10</a>
       <a href="#" class="menu-item">Lớp 11</a>
       <a href="#" class="menu-item">Lớp 12</a>
-      <a href="upload-assignment.html" class="menu-item menu-upload" id="link-upload"><i class="fa fa-upload"></i> Tải bài tập</a>
+      <a href="upload-assignments.html" class="menu-item menu-upload" id="link-upload"><i class="fa fa-upload"></i> Tải bài tập</a>
     </nav>
 
     <div class="header-right">
@@ -42,36 +87,45 @@
   </header>
 
   <main class="container">
+    <!-- MAIN CARD -->
     <section class="card" id="main">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-        <div>
-          <h2 id="status-title">Bạn chưa đăng nhập</h2>
-          <div id="status-desc" class="muted">Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <a href="login.html" class="btn btn-ghost" id="link-login"><i class="fa fa-right-to-bracket"></i> Đăng nhập</a>
-          <a href="register.html" class="btn" id="link-register"><i class="fa fa-user-plus"></i> Đăng ký</a>
-          <a href="upload-assignment.html" class="btn btn-ghost" id="btn-upload-quick"><i class="fa fa-upload"></i> Tải bài tập</a>
+      <div id="status-block" data-status-prompt>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+          <div>
+            <h2 id="status-title">Bạn chưa đăng nhập</h2>
+            <div id="status-desc" class="muted">Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.</div>
+          </div>
+          <div>
+            <a href="login.html" class="btn btn-ghost" id="link-login"><i class="fa fa-right-to-bracket"></i> Đăng nhập</a>
+            <a href="register.html" class="btn" id="link-register"><i class="fa fa-user-plus"></i> Đăng ký</a>
+            <a href="upload-assignments.html" class="btn btn-ghost" id="btn-upload-quick"><i class="fa fa-upload"></i> Tải bài tập</a>
+          </div>
         </div>
       </div>
 
+      <!-- User card (hidden by default) -->
       <div id="user-card" class="card hidden" style="margin-top:16px">
         <h3>Thông tin tài khoản</h3>
         <div id="user-info" class="muted"></div>
-        <div class="user-actions">
+        <div class="user-actions" style="margin-top:12px">
           <button id="btn-logout" class="btn btn-ghost"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
           <button id="btn-test" class="btn"><i class="fa fa-lock"></i> Gọi API bảo mật</button>
         </div>
-        <div id="api-result" class="api-result"></div>
+        <div id="api-result" class="api-result" style="margin-top:10px"></div>
       </div>
 
+      <div id="messages" style="margin-top:12px">
+        <div id="msg" class="ok" style="display:none"></div>
+        <div id="err" class="err" style="display:none"></div>
+      </div>
     </section>
 
+    <!-- SUBJECTS -->
     <section class="card subjects-view" id="subjects">
       <h3 class="service-title">Danh sách môn theo nhóm lớp</h3>
-      <p class="small muted">Nhấp vào môn để xem mô tả mẫu. Danh sách bao gồm hai nhóm: Lớp 6–9 và Lớp 10–12.</p>
+      <p class="small muted">Nhấp vào môn để xem mô tả mẫu và liên kết SGK / SBT tương ứng. Nhấn link để mở trang sách.</p>
 
-      <div class="grid">
+      <div class="grid" style="margin-top:12px">
         <div class="grade">
           <h4>Lớp 6 — 9</h4>
           <div class="two-col">
@@ -117,17 +171,20 @@
         </div>
       </div>
 
-      <div id="subject-detail" class="subject-detail" style="display:none">
+      <!-- detail box -->
+      <div id="subject-detail" class="subject-detail" style="display:none; margin-top:12px">
         <h4 id="subject-title"></h4>
         <div id="subject-desc" class="muted"></div>
+        <div id="subject-books" class="subject-books" style="margin-top:8px"></div>
       </div>
     </section>
 
+    <!-- NOTES -->
     <section class="card" style="margin-top:16px">
       <h3>Ghi chú</h3>
       <ul>
-        <li>Đăng ký → đăng nhập → quay về trang chủ để thấy thông tin tài khoản.</li>
-        <li>Đây là giao diện demo; bạn có thể kết nối danh sách môn với backend để load từ DB.</li>
+        <li>Nhấn vào tên môn → danh sách sách giáo khoa / sách bài tập sẽ hiện ở khung chi tiết.</li>
+        <li>Link mở trang sách (hoc10.vn) trong tab mới.</li>
       </ul>
     </section>
 
@@ -136,79 +193,6 @@
     </footer>
   </main>
 
-  <script>
-    // populate subjects + basic auth UI (giữ tương thích với code cũ)
-    const subjectsByGrade = {
-      6: ['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
-      7: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
-      8: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
-      9: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
-      10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
-      11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
-      12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
-      common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
-    };
-
-    const gradeEls = {
-      6: document.getElementById('grade-6'),
-      7: document.getElementById('grade-7'),
-      8: document.getElementById('grade-8'),
-      9: document.getElementById('grade-9'),
-      10: document.getElementById('grade-10'),
-      11: document.getElementById('grade-11'),
-      12: document.getElementById('grade-12'),
-      common: document.getElementById('grade-common')
-    };
-
-    function createSubjectItem(name){
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.textContent = name;
-      a.href = '#';
-      a.className = 'subject';
-      a.addEventListener('click', (e)=>{ e.preventDefault(); showSubjectDetail(name); });
-      li.appendChild(a);
-      return li;
-    }
-
-    function populateSubjects(){
-      for(const g of [6,7,8,9,10,11,12]){
-        const c = gradeEls[g]; if(!c) continue; c.innerHTML='';
-        subjectsByGrade[g].forEach(s => c.appendChild(createSubjectItem(s)));
-      }
-      if(gradeEls.common){ gradeEls.common.innerHTML=''; subjectsByGrade.common.forEach(s=>gradeEls.common.appendChild(createSubjectItem(s))); }
-    }
-
-    function showSubjectDetail(name){
-      document.getElementById('subject-title').textContent = name;
-      document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}"`;
-      document.getElementById('subject-detail').style.display = 'block';
-      window.scrollTo({top: document.getElementById('subject-detail').offsetTop - 20, behavior:'smooth'});
-    }
-
-    // auth helpers
-    function token(){ return localStorage.getItem('token'); }
-    async function fetchProfile(){
-      const t = token(); if(!t) return;
-      try{
-        const res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + t }});
-        if(!res.ok) return;
-        const j = await res.json();
-        // show user info
-        const uc = document.getElementById('user-card');
-        uc.classList.remove('hidden');
-        document.getElementById('user-info').innerHTML = `<strong>${j.user.display_name||j.user.username}</strong><div class="muted">role: ${j.user.role}</div>`;
-        // hide login/register links
-        document.getElementById('link-login').style.display='none';
-        document.getElementById('link-register').style.display='none';
-      }catch(e){ console.warn(e); }
-    }
-
-    document.getElementById('btn-logout')?.addEventListener('click', ()=>{ localStorage.removeItem('token'); location.reload(); });
-
-    // init
-    populateSubjects();
-    fetchProfile();
-  </script>
+  <script src="index.js"></script>
 </body>
 </html>
