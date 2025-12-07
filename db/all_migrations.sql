@@ -1,11 +1,12 @@
 ﻿-- db/all_migrations.sql
 -- Combined migrations: drive_folders, class_subjects, add columns, subjects seed, indexes.
 -- Idempotent: safe to run multiple times.
+-- Header inserted by fix: ensure UTF8 and ensure subjects.title exists
 SET client_encoding = 'UTF8';
 
 DO $$
 BEGIN
-  -- If subjects.title column missing, add it and copy values from name/subject
+  -- Nếu chưa có cột title thì thêm cột và copy từ name/subject
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'subjects' AND column_name = 'title'
