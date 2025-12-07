@@ -40,7 +40,6 @@
         <div id="authControls" class="auth-controls">
           <a id="link-login" class="btn btn-ghost" href="login.html"><i class="fa fa-right-to-bracket"></i> Đăng nhập</a>
           <a id="link-register" class="btn" href="register.html"><i class="fa fa-user-plus"></i> Đăng ký</a>
-          <!-- header logout button (hidden when not logged in) -->
           <button id="btn-logout-header" class="btn btn-ghost btn-logout" style="display:none"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
         </div>
       </div>
@@ -49,15 +48,10 @@
 
   <main class="container">
     <section class="card" id="main">
-      <div id="status-block" data-status-prompt>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
-      </div>
-
       <div id="user-card" class="card hidden" style="margin-top:16px">
         <h3>Thông tin tài khoản</h3>
         <div id="user-info" class="muted"></div>
         <div class="user-actions" style="margin-top:12px">
-          <!-- user-card logout button -->
           <button id="btn-logout" class="btn btn-ghost btn-logout"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
           <button id="btn-test" class="btn"><i class="fa fa-lock"></i> Gọi API bảo mật</button>
         </div>
@@ -71,7 +65,9 @@
     </section>
 
     <section class="card subjects-view" id="subjects">
-      
+      <h3 class="service-title">Danh sách môn theo nhóm lớp</h3>
+      <p class="small muted">Nhấp vào môn để xem mô tả mẫu và liên kết SGK / SBT tương ứng. Nhấn link để mở trang sách.</p>
+
       <div class="grid" style="margin-top:12px">
         <div class="grade">
           <h4>Lớp 6 — 9</h4>
@@ -138,10 +134,11 @@
     </footer>
   </main>
 
-  <!-- Inline fallback script (populates subjects + installs delegation) -->
+  <!-- Inline fallback populate (keeps page usable if JS fails) -->
   <script>
     (function(){
       'use strict';
+      // minimal fallback: populate lists with names only (full runtime adds links)
       const subjectsByGrade = {
         6:['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
         7:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
@@ -152,11 +149,6 @@
         12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
         common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
       };
-
-      function hoc10Search(subject, grade){
-        return 'https://www.hoc10.vn/tim-kiem?q=' + encodeURIComponent(subject + (grade ? ' ' + grade : ''));
-      }
-
       function createSubjectItem(name, grade){
         const li = document.createElement('li');
         const a = document.createElement('a');
@@ -165,11 +157,9 @@
         a.textContent = name;
         a.dataset.subject = name;
         a.dataset.grade = grade;
-        a.setAttribute('data-desc', `Mô tả mẫu cho môn "${name}".`);
         li.appendChild(a);
         return li;
       }
-
       function fallbackPopulate(){
         try {
           Object.keys(subjectsByGrade).forEach(function(g){
@@ -182,94 +172,49 @@
               });
             }
           });
-          installDelegation();
-          console.info('[FP inline fallback] subjects populated');
-        } catch(e){
-          console.error('[FP inline fallback] error populating subjects', e);
-        }
-      }
-
-      function showDetailFallback(subject, grade){
-        const title = document.getElementById('subject-title');
-        const desc = document.getElementById('subject-desc');
-        const booksEl = document.getElementById('subject-books');
-        const wrap = document.getElementById('subject-detail');
-        if(title) title.textContent = subject;
-        if(desc) desc.textContent = `Tài liệu tham khảo cho ${subject} (Lớp ${grade}).`;
-        if(booksEl){
-          booksEl.innerHTML = '';
-          const a = document.createElement('a');
-          a.className = 'book-link';
-          a.href = hoc10Search(subject, grade);
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.textContent = `Tìm sách trên hoc10 cho ${subject} — Lớp ${grade}`;
-          booksEl.appendChild(a);
-        }
-        if(wrap) wrap.style.display = 'block';
-        try { window.scrollTo({ top: wrap.offsetTop - 20, behavior: 'smooth' }); } catch(e){}
-      }
-
-      function installDelegation(){
-        const container = document.querySelector('.subjects-view') || document.body;
-        if(container._fpInlineDelegationInstalled) return;
-        container.addEventListener('click', function(e){
-          let el = e.target;
-          while(el && el !== container){
-            if(el.matches && el.matches('a.subject')){
-              e.preventDefault();
-              const subject = el.dataset.subject || el.textContent.trim();
-              const grade = el.dataset.grade || (el.closest && el.closest('[id^="grade-"]') ? el.closest('[id^="grade-"]').id.replace('grade-','') : 'unknown');
-              if(window.FP && typeof window.FP.showSubjectDetail === 'function'){
-                try { window.FP.showSubjectDetail(subject, grade); return; } catch(e){ /* fallthrough */ }
+          // install minimal delegation to open hoc10 if full runtime missing
+          const container = document.querySelector('.subjects-view') || document.body;
+          if(!container._fpInlineDelegationInstalled){
+            container.addEventListener('click', function(e){
+              let el = e.target;
+              while(el && el !== container){
+                if(el.matches && el.matches('a.subject')){
+                  e.preventDefault();
+                  const subject = el.dataset.subject || el.textContent.trim();
+                  const grade = el.dataset.grade || '';
+                  const title = document.getElementById('subject-title');
+                  const desc = document.getElementById('subject-desc');
+                  const booksEl = document.getElementById('subject-books');
+                  const wrap = document.getElementById('subject-detail');
+                  if(title) title.textContent = subject;
+                  if(desc) desc.textContent = `Tài liệu tham khảo cho ${subject} (Lớp ${grade}).`;
+                  if(booksEl){
+                    booksEl.innerHTML = '';
+                    const a = document.createElement('a');
+                    a.className = 'book-link';
+                    a.href = 'https://www.hoc10.vn/tim-kiem?q=' + encodeURIComponent(subject + (grade ? ' ' + grade : ''));
+                    a.target = '_blank'; a.rel = 'noopener noreferrer';
+                    a.textContent = `Tìm sách trên hoc10 cho ${subject} — Lớp ${grade}`;
+                    booksEl.appendChild(a);
+                  }
+                  if(wrap) wrap.style.display = 'block';
+                  return;
+                }
+                el = el.parentNode;
               }
-              showDetailFallback(subject, grade);
-              return;
-            }
-            el = el.parentNode;
+            }, false);
+            container._fpInlineDelegationInstalled = true;
           }
-        }, false);
-        container._fpInlineDelegationInstalled = true;
-      }
-
-      function ensureAuthLinksNavigate(){
-        ['link-login','link-register','link-upload','btn-upload-quick','link-login-cta','link-register-cta'].forEach(function(id){
-          const el = document.getElementById(id);
-          if(!el) return;
-          el.addEventListener('click', function(ev){
-            const href = el.getAttribute('href') || el.dataset.href;
-            if(href) {
-              window.location.assign(href);
-              ev.stopImmediatePropagation();
-            }
-          }, { capture: true });
-        });
-      }
-
-      function initInline(){
-        ensureAuthLinksNavigate();
-        if(window.FP && typeof window.FP.populateSubjects === 'function'){
-          try {
-            window.FP.populateSubjects();
-            if(!(document.querySelector('.subjects-view')._fpDelegationInstalled)) installDelegation();
-            console.info('[FP inline] used window.FP.populateSubjects');
-            return;
-          } catch(e){
-            console.warn('[FP inline] window.FP.populateSubjects threw, using fallback', e);
-          }
+        } catch(e){
+          console.error('[fallbackPopulate] error', e);
         }
-        fallbackPopulate();
       }
-
-      if(document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', initInline);
-      } else {
-        initInline();
-      }
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fallbackPopulate);
+      else fallbackPopulate();
     })();
   </script>
 
-  <!-- Main runtime script (contains full logic, including logout). Keep this file as public/index.js -->
+  <!-- Full app runtime -->
   <script src="index.js"></script>
 </body>
 </html>
