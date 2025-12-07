@@ -2,153 +2,151 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>FP - Trang chủ</title>
+  <title>FP — Trang chủ</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 820px; margin: auto; }
-    header { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
-    nav a { margin-right: 0.75rem; text-decoration:none; color:#0366d6; }
-    .card { border:1px solid #e1e4e8; padding:1rem; margin-top:1rem; border-radius:6px; }
-    .muted { color:#6a737d; }
-    button { padding:0.45rem 0.75rem; margin-right:0.5rem; cursor:pointer; }
-    .err { color:#b91c1c; margin-top:0.5rem; }
-    .ok { color:#065f46; margin-top:0.5rem; }
-    pre { background:#f6f8fa; padding:0.75rem; border-radius:6px; overflow:auto; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem; }
-    .grade { border:1px dashed #d1d5db; padding:0.75rem; border-radius:6px; background:#fafafa; }
-    .grade h4 { margin:0 0 0.5rem 0; }
-    ul { padding-left:1.1rem; margin:0; }
-    li { margin:0.25rem 0; }
-    .subject { color:#0b5; cursor:pointer; text-decoration:underline; }
-    .subject:hover { opacity:0.9; }
-    .small { font-size:0.9rem; color:#374151; }
-    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
-    .subject-detail { margin-top:1rem; display:none; }
-    .controls { margin-top:1rem; }
-    .card-hidden { display:none; margin-top:1rem; }
-    .user-actions { margin-top:0.75rem; }
-    .api-result { margin-top:0.75rem; white-space:pre-wrap; word-break:break-word; }
-    @media (max-width:640px){
-      .grid{grid-template-columns:1fr}
-      .two-col{grid-template-columns:1fr}
-      header{flex-direction:column;align-items:flex-start;gap:0.5rem}
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="main.css">
 </head>
 <body>
-  <header>
-    <div>
-      <h1 style="margin:0">FP — Hệ thống học tập</h1>
-      <div class="muted">Trang quản lý người dùng & danh sách môn theo lớp</div>
+  <header class="top-header">
+    <div class="header-left">
+      <a href="/"><img src="logo.png" alt="logo" class="logo"></a>
+      <div>
+        <h1>FP — Hệ thống học tập</h1>
+        <div class="tagline small muted">Trang quản lý người dùng & danh sách môn</div>
+      </div>
     </div>
-    <nav id="nav">
-      <a href="register.html" id="link-register">Đăng ký</a>
-      <a href="login.html" id="link-login">Đăng nhập</a>
-      <a href="#" id="link-logout" style="display:none">Đăng xuất</a>
+
+    <nav class="menu-class" aria-label="Lớp">
+      <a href="#" class="menu-item active">Lớp 6</a>
+      <a href="#" class="menu-item">Lớp 7</a>
+      <a href="#" class="menu-item">Lớp 8</a>
+      <a href="#" class="menu-item">Lớp 9</a>
+      <a href="#" class="menu-item">Lớp 10</a>
+      <a href="#" class="menu-item">Lớp 11</a>
+      <a href="#" class="menu-item">Lớp 12</a>
+      <a href="upload-assignments.html" class="menu-item menu-upload" id="link-upload"><i class="fa fa-upload"></i> Tải bài tập</a>
     </nav>
+
+    <div class="header-right">
+      <form class="search-form" role="search" onsubmit="return false">
+        <input class="search-input" placeholder="Tìm môn, lớp..." />
+        <button class="search-btn" aria-label="Search"><i class="fa fa-search"></i></button>
+      </form>
+
+      <div class="user-area">
+        <img src="avatar.png" alt="avatar" class="avatar" id="avatarBtn">
+      </div>
+    </div>
   </header>
 
-  <section class="card" id="main">
-    <h2 id="status-title">Bạn chưa đăng nhập</h2>
-    <div id="status-desc" class="muted">Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.</div>
-
-    <div id="controls" style="margin-top:1rem">
-      <a href="login.html"><button id="btn-login">Đăng nhập</button></a>
-      <a href="register.html"><button id="btn-register">Đăng ký</button></a>
-      <button id="btn-refresh" style="display:none">Lấy thông tin tài khoản</button>
-    </div>
-
-    <div id="user-card" style="display:none; margin-top:1rem">
-      <h3>Thông tin tài khoản</h3>
-      <div id="user-info" class="muted"></div>
-      <div style="margin-top:0.75rem">
-        <button id="btn-logout">Đăng xuất</button>
-        <button id="btn-test">Gọi API bảo mật (/api/profile)</button>
+  <main class="container">
+    <section class="card" id="main">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <h2 id="status-title">Bạn chưa đăng nhập</h2>
+          <div id="status-desc" class="muted">Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a href="login.html" class="btn btn-ghost" id="link-login"><i class="fa fa-right-to-bracket"></i> Đăng nhập</a>
+          <a href="register.html" class="btn" id="link-register"><i class="fa fa-user-plus"></i> Đăng ký</a>
+          <a href="upload-assignments.html" class="btn btn-ghost" id="btn-upload-quick"><i class="fa fa-upload"></i> Tải bài tập</a>
+        </div>
       </div>
-      <div id="api-result" style="margin-top:0.75rem"></div>
-    </div>
 
-    <div id="messages">
-      <div id="msg" class="ok" style="display:none"></div>
-      <div id="err" class="err" style="display:none"></div>
-    </div>
-  </section>
+      <div id="user-card" class="card hidden" style="margin-top:16px">
+        <h3>Thông tin tài khoản</h3>
+        <div id="user-info" class="muted"></div>
+        <div class="user-actions">
+          <button id="btn-logout" class="btn btn-ghost"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
+          <button id="btn-test" class="btn"><i class="fa fa-lock"></i> Gọi API bảo mật</button>
+        </div>
+        <div id="api-result" class="api-result"></div>
+      </div>
 
-  <section class="card">
-    <h3>Danh sách môn theo nhóm lớp</h3>
-    <p class="small">Nhấp vào môn để xem mô tả mẫu. Danh sách bao gồm hai nhóm: Lớp 6–9 và Lớp 10–12.</p>
+    </section>
 
-    <div class="grid">
-      <div class="grade">
-        <h4>Lớp 6 — 9</h4>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-          <div>
-            <strong>Lớp 6</strong>
-            <ul id="grade-6"></ul>
+    <section class="card subjects-view" id="subjects">
+      <h3 class="service-title">Danh sách môn theo nhóm lớp</h3>
+      <p class="small muted">Nhấp vào môn để xem mô tả mẫu. Danh sách bao gồm hai nhóm: Lớp 6–9 và Lớp 10–12.</p>
+
+      <div class="grid">
+        <div class="grade">
+          <h4>Lớp 6 — 9</h4>
+          <div class="two-col">
+            <div>
+              <strong>Lớp 6</strong>
+              <ul id="grade-6"></ul>
+            </div>
+            <div>
+              <strong>Lớp 7</strong>
+              <ul id="grade-7"></ul>
+            </div>
+            <div>
+              <strong>Lớp 8</strong>
+              <ul id="grade-8"></ul>
+            </div>
+            <div>
+              <strong>Lớp 9</strong>
+              <ul id="grade-9"></ul>
+            </div>
           </div>
-          <div>
-            <strong>Lớp 7</strong>
-            <ul id="grade-7"></ul>
-          </div>
-          <div>
-            <strong>Lớp 8</strong>
-            <ul id="grade-8"></ul>
-          </div>
-          <div>
-            <strong>Lớp 9</strong>
-            <ul id="grade-9"></ul>
+        </div>
+
+        <div class="grade">
+          <h4>Lớp 10 — 12</h4>
+          <div class="two-col">
+            <div>
+              <strong>Lớp 10</strong>
+              <ul id="grade-10"></ul>
+            </div>
+            <div>
+              <strong>Lớp 11</strong>
+              <ul id="grade-11"></ul>
+            </div>
+            <div>
+              <strong>Lớp 12</strong>
+              <ul id="grade-12"></ul>
+            </div>
+            <div>
+              <strong>Chung</strong>
+              <ul id="grade-common"></ul>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="grade">
-        <h4>Lớp 10 — 12</h4>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-          <div>
-            <strong>Lớp 10</strong>
-            <ul id="grade-10"></ul>
-          </div>
-          <div>
-            <strong>Lớp 11</strong>
-            <ul id="grade-11"></ul>
-          </div>
-          <div>
-            <strong>Lớp 12</strong>
-            <ul id="grade-12"></ul>
-          </div>
-          <div>
-            <strong>Chung</strong>
-            <ul id="grade-common"></ul>
-          </div>
-        </div>
+      <div id="subject-detail" class="subject-detail" style="display:none">
+        <h4 id="subject-title"></h4>
+        <div id="subject-desc" class="muted"></div>
       </div>
-    </div>
+    </section>
 
-    <div id="subject-detail" style="margin-top:1rem; display:none">
-      <h4 id="subject-title"></h4>
-      <div id="subject-desc" class="muted"></div>
-    </div>
-  </section>
+    <section class="card" style="margin-top:16px">
+      <h3>Ghi chú</h3>
+      <ul>
+        <li>Đăng ký → đăng nhập → quay về trang chủ để thấy thông tin tài khoản.</li>
+        <li>Đây là giao diện demo; bạn có thể kết nối danh sách môn với backend để load từ DB.</li>
+      </ul>
+    </section>
 
-  <section class="card" style="margin-top:1rem">
-    <h3>Ghi chú</h3>
-    <ul>
-      <li>Đăng ký → đăng nhập → quay về trang chủ để thấy thông tin tài khoản.</li>
-      <li>Đây là giao diện demo; bạn có thể kết nối danh sách môn với backend để load từ DB.</li>
-    </ul>
-    <pre id="debug" style="display:none"></pre>
-  </section>
+    <footer class="site-footer">
+      <div>© FP — Hệ thống học tập</div>
+    </footer>
+  </main>
 
   <script>
+    // populate subjects + basic auth UI (giữ tương thích với code cũ)
     const subjectsByGrade = {
-      6: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Khoa học tự nhiên', 'Lịch sử', 'Địa lí', 'Tin học', 'Công nghệ', 'GDCD'],
-      7: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'Công nghệ'],
-      8: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'Tin học'],
-      9: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Lịch sử', 'Địa lí', 'GDQPAN'],
-      10: ['Toán (Tự chọn/Chuyên)', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'GDCD'],
-      11: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'GDQPAN'],
-      12: ['Toán', 'Ngữ văn', 'Tiếng Anh', 'Vật lí', 'Hóa học', 'Sinh học', 'Tin học', 'Lịch sử & Địa lí'],
-      common: ['Giáo dục công dân', 'Công nghệ', 'Khoa học tự nhiên', 'Giáo dục kinh tế và pháp luật']
+      6: ['Toán','Ngữ văn','Tiếng Anh','Khoa học tự nhiên','Lịch sử','Địa lí','Tin học','Công nghệ','GDCD'],
+      7: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Công nghệ'],
+      8: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','Tin học'],
+      9: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Lịch sử','Địa lí','GDQPAN'],
+      10:['Toán (Tự chọn/Chuyên)','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDCD'],
+      11:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','GDQPAN'],
+      12:['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học','Lịch sử & Địa lí'],
+      common:['Giáo dục công dân','Công nghệ','Khoa học tự nhiên','Giáo dục kinh tế và pháp luật']
     };
 
     const gradeEls = {
@@ -162,172 +160,55 @@
       common: document.getElementById('grade-common')
     };
 
-    function createSubjectItem(name) {
+    function createSubjectItem(name){
       const li = document.createElement('li');
       const a = document.createElement('a');
       a.textContent = name;
       a.href = '#';
       a.className = 'subject';
-      a.addEventListener('click', (e) => {
-        e.preventDefault();
-        showSubjectDetail(name);
-      });
+      a.addEventListener('click', (e)=>{ e.preventDefault(); showSubjectDetail(name); });
       li.appendChild(a);
       return li;
     }
 
-    function populateSubjects() {
-      for (const g of [6,7,8,9,10,11,12]) {
-        const list = subjectsByGrade[g] || [];
-        const container = gradeEls[g];
-        container.innerHTML = '';
-        list.forEach(s => container.appendChild(createSubjectItem(s)));
+    function populateSubjects(){
+      for(const g of [6,7,8,9,10,11,12]){
+        const c = gradeEls[g]; if(!c) continue; c.innerHTML='';
+        subjectsByGrade[g].forEach(s => c.appendChild(createSubjectItem(s)));
       }
-      gradeEls.common.innerHTML = '';
-      (subjectsByGrade.common || []).forEach(s => gradeEls.common.appendChild(createSubjectItem(s)));
+      if(gradeEls.common){ gradeEls.common.innerHTML=''; subjectsByGrade.common.forEach(s=>gradeEls.common.appendChild(createSubjectItem(s))); }
     }
 
-    function showSubjectDetail(name) {
+    function showSubjectDetail(name){
       document.getElementById('subject-title').textContent = name;
-      document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}". Bạn có thể liên kết môn này tới DB hoặc trang khóa học cụ thể.`;
+      document.getElementById('subject-desc').textContent = `Mô tả mẫu cho môn "${name}"`;
       document.getElementById('subject-detail').style.display = 'block';
-      window.scrollTo({ top: document.getElementById('subject-detail').offsetTop - 20, behavior: 'smooth' });
+      window.scrollTo({top: document.getElementById('subject-detail').offsetTop - 20, behavior:'smooth'});
     }
 
-    // --- Authentication UI (keeps previous behavior) ---
-    const nav = document.getElementById('nav');
-    const linkLogin = document.getElementById('link-login');
-    const linkRegister = document.getElementById('link-register');
-    const linkLogout = document.getElementById('link-logout');
-
-    const statusTitle = document.getElementById('status-title');
-    const statusDesc = document.getElementById('status-desc');
-    const controls = document.getElementById('controls');
-    const btnRefresh = document.getElementById('btn-refresh');
-
-    const userCard = document.getElementById('user-card');
-    const userInfo = document.getElementById('user-info');
-    const apiResult = document.getElementById('api-result');
-
-    const msgEl = document.getElementById('msg');
-    const errEl = document.getElementById('err');
-    const debugEl = document.getElementById('debug');
-
-    const btnLogout = document.getElementById('btn-logout');
-    const btnTest = document.getElementById('btn-test');
-
-    function showMsg(text) { msgEl.style.display='block'; msgEl.textContent = text; errEl.style.display='none'; }
-    function showErr(text) { errEl.style.display='block'; errEl.textContent = text; msgEl.style.display='none'; }
-    function hideMsgs() { msgEl.style.display='none'; errEl.style.display='none'; }
-
-    function token() { return localStorage.getItem('token'); }
-
-    async function fetchProfile() {
-      hideMsgs();
-      apiResult.textContent = '';
-      const t = token();
-      if (!t) {
-        setLoggedOutUI();
-        return;
-      }
-      try {
+    // auth helpers
+    function token(){ return localStorage.getItem('token'); }
+    async function fetchProfile(){
+      const t = token(); if(!t) return;
+      try{
         const res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + t }});
+        if(!res.ok) return;
         const j = await res.json();
-        if (!res.ok) {
-          showErr(j.error || 'Không thể lấy thông tin');
-          setLoggedOutUI();
-          return;
-        }
-        setLoggedInUI(j.user);
-      } catch (e) {
-        showErr('Lỗi kết nối: ' + e.message);
-      }
+        // show user info
+        const uc = document.getElementById('user-card');
+        uc.classList.remove('hidden');
+        document.getElementById('user-info').innerHTML = `<strong>${j.user.display_name||j.user.username}</strong><div class="muted">role: ${j.user.role}</div>`;
+        // hide login/register links
+        document.getElementById('link-login').style.display='none';
+        document.getElementById('link-register').style.display='none';
+      }catch(e){ console.warn(e); }
     }
 
-    function setLoggedInUI(user) {
-      statusTitle.textContent = 'Bạn đã đăng nhập';
-      statusDesc.textContent = 'Xin chào, ' + (user.display_name || user.username);
-      linkLogin.style.display = 'none';
-      linkRegister.style.display = 'none';
-      linkLogout.style.display = 'inline';
-      controls.style.display = 'none';
-      userCard.style.display = 'block';
-      userInfo.innerHTML = `
-        <strong>${escapeHtml(user.display_name || user.username)}</strong>
-        <div class="muted">role: ${escapeHtml(user.role || '')}</div>
-        <div class="muted">created_at: ${escapeHtml(user.created_at || '')}</div>
-      `;
-      debugEl.style.display = 'none';
-      btnRefresh.style.display = 'none';
-    }
+    document.getElementById('btn-logout')?.addEventListener('click', ()=>{ localStorage.removeItem('token'); location.reload(); });
 
-    function setLoggedOutUI() {
-      statusTitle.textContent = 'Bạn chưa đăng nhập';
-      statusDesc.textContent = 'Bạn có thể đăng nhập hoặc đăng ký để truy cập các tính năng bảo mật.';
-      linkLogin.style.display = 'inline';
-      linkRegister.style.display = 'inline';
-      linkLogout.style.display = 'none';
-      controls.style.display = 'block';
-      userCard.style.display = 'none';
-      apiResult.textContent = '';
-      debugEl.style.display = 'none';
-      btnRefresh.style.display = 'inline';
-    }
-
-    function escapeHtml(s) {
-      if (!s) return '';
-      return s.replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    }
-
-    // on page load
-    (function init() {
-      populateSubjects();
-      if (token()) {
-        fetchProfile();
-      } else {
-        setLoggedOutUI();
-      }
-    })();
-
-    // events
-    linkLogout.addEventListener('click', (e) => {
-      e.preventDefault();
-      localStorage.removeItem('token');
-      showMsg('Đã đăng xuất.');
-      setLoggedOutUI();
-    });
-    btnLogout.addEventListener('click', () => {
-      localStorage.removeItem('token');
-      showMsg('Đã đăng xuất.');
-      setLoggedOutUI();
-    });
-
-    btnTest.addEventListener('click', async () => {
-      apiResult.textContent = '';
-      const t = token();
-      if (!t) { showErr('Không có token.'); return; }
-      try {
-        const res = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + t }});
-        const j = await res.json();
-        if (!res.ok) {
-          apiResult.textContent = 'Lỗi: ' + (j.error || JSON.stringify(j));
-          return;
-        }
-        apiResult.textContent = JSON.stringify(j, null, 2);
-      } catch (e) {
-        apiResult.textContent = 'Lỗi kết nối: ' + e.message;
-      }
-    });
-
-    btnRefresh.addEventListener('click', () => {
-      fetchProfile();
-    });
-
-    window.addEventListener('storage', (ev) => {
-      if (ev.key === 'token') {
-        fetchProfile();
-      }
-    });
+    // init
+    populateSubjects();
+    fetchProfile();
   </script>
 </body>
 </html>
