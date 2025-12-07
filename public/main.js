@@ -1,5 +1,6 @@
 /* public/main.js
-   Thay thế hoàn chỉnh: thêm autocomplete dropdown + xử lý lỗi tốt hơn.
+   Full updated file: autocomplete dropdown, robust inline login handling,
+   and logout helpers appended at the end.
 */
 document.addEventListener('DOMContentLoaded', () => {
   // mapping lớp -> môn
@@ -379,26 +380,87 @@ document.addEventListener('DOMContentLoaded', () => {
     inlineLogin.classList.add('hidden');
     inlineLogin.setAttribute('aria-hidden', 'true');
   });
+
+  // --- REPLACED: more robust inline login submit handler ---
   inlineLoginForm && inlineLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // disable submit to prevent duplicates
+    const submitBtn = inlineLoginForm.querySelector('button[type="submit"], input[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
     const fd = new FormData(inlineLoginForm);
     const payload = { username: fd.get('username'), password: fd.get('password') };
+
+    // small helper to show error nicely
+    function showInlineError(msg) {
+      try {
+        let el = inlineLoginForm.querySelector('.inline-login-error');
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'inline-login-error err';
+          inlineLoginForm.prepend(el);
+        }
+        el.textContent = msg;
+      } catch (err) {
+        console.error('showInlineError', err);
+        alert(msg);
+      }
+    }
+
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
-      if (json.ok) {
-        inlineLogin.classList.add('hidden');
-        inlineLogin.setAttribute('aria-hidden', 'true');
-        loadUser();
+
+      // If server performed redirect and fetch followed it:
+      if (res.redirected) {
+        // go to final URL (server-side decided)
+        window.location.replace(res.url);
+        return;
+      }
+
+      const ct = res.headers.get('content-type') || '';
+      if (ct.indexOf('application/json') !== -1) {
+        const json = await res.json();
+        if (res.ok && (json.ok || json.token)) {
+          // store token if returned (default to sessionStorage)
+          try {
+            const remember = !!inlineLoginForm.querySelector('input[name="remember"]:checked');
+            if (json.token) {
+              if (remember) localStorage.setItem('auth_token', json.token);
+              else sessionStorage.setItem('auth_token', json.token);
+            }
+          } catch (err) { /* ignore storage errors */ }
+
+          // close inline login and refresh user UI
+          inlineLogin.classList.add('hidden');
+          inlineLogin.setAttribute('aria-hidden', 'true');
+          await loadUser();
+          return;
+        } else {
+          showInlineError(json.message || 'Đăng nhập thất bại');
+        }
+      } else if (ct.indexOf('text/html') !== -1) {
+        // server returned HTML (likely a non-AJAX response); navigate if different
+        const text = await res.text();
+        // try to detect a redirect URL in response (as fallback)
+        if (res.url && res.url !== window.location.href) {
+          window.location.replace(res.url);
+          return;
+        }
+        showInlineError('Đã nhận về trang HTML từ server; đăng nhập không thành công.');
+        console.debug('login HTML response', text.slice(0,200));
       } else {
-        alert('Lỗi đăng nhập: ' + (json.message || 'Thông tin không đúng'));
+        showInlineError('Phản hồi không hợp lệ từ server.');
       }
     } catch (err) {
-      alert('Lỗi mạng, thử lại');
+      console.error('inline login error', err);
+      showInlineError('Lỗi mạng, thử lại sau');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 
@@ -418,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load current user state
   async function loadUser() {
     try {
-      const r = await fetch('/api/me');
+      const r = await fetch('/api/me', { credentials: 'include' });
       const j = await r.json();
       const logged = j.user;
       const userNot = document.getElementById('userNotLogged');
@@ -434,7 +496,112 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       // ignore
+      console.warn('loadUser error', err);
     }
   }
   loadUser();
-});
+}); // end DOMContentLoaded
+
+// --- logout helpers (appended) ---
+(function(){
+  'use strict';
+
+  // Xoá local/session storage và (tùy ý) xoá cookie phía client
+  function clearAuthStateClientSide(){
+    try {
+      // remove known auth keys
+      ['auth_token','auth_user','token','user'].forEach(k=>{
+        try{ localStorage.removeItem(k); }catch(e){}
+        try{ sessionStorage.removeItem(k); }catch(e){}
+      });
+      // remove all cookies (client-side) - note: HttpOnly cookies won't be removed here
+      document.cookie.split(';').forEach(c=>{
+        const name = c.split('=')[0].trim();
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+      });
+    } catch(e){
+      console.warn('clearAuthStateClientSide error', e);
+    }
+  }
+
+  // Call server logout endpoint then clear client state and reload UI
+  async function doLogout(){
+    try {
+      // try to call server logout if available
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      }).catch(()=>{}); // ignore network errors here
+    } catch(e){}
+    // Clear client-side tokens/state
+    clearAuthStateClientSide();
+    // Refresh user UI by calling loadUser() if present, otherwise reload page
+    if (typeof window.loadUser === 'function') {
+      try { await window.loadUser(); } catch(e) {}
+    }
+    // Finally, reload to ensure all UI reset
+    try { window.location.reload(); } catch(e){ window.location.href = '/'; }
+  }
+
+  // Attach to #btn-logout if exists (and also to any .btn-logout)
+  function installLogoutButtons(){
+    const btn = document.getElementById('btn-logout');
+    if (btn && !btn._logoutInstalled) {
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        doLogout();
+      });
+      btn._logoutInstalled = true;
+    }
+    // support multiple elements with class
+    document.querySelectorAll('.btn-logout').forEach(b=>{
+      if(b._logoutInstalled) return;
+      b.addEventListener('click', (e)=>{ e.preventDefault(); doLogout(); });
+      b._logoutInstalled = true;
+    });
+  }
+
+  // Run on DOM ready (if script appended at end it's OK)
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', installLogoutButtons);
+  } else {
+    installLogoutButtons();
+  }
+
+  // expose for debugging
+  window.clearAuthStateClientSide = clearAuthStateClientSide;
+  window.doLogout = doLogout;
+})();
+async function doLogout(){
+  try {
+    // call server-side logout endpoint
+    await fetch('/logout.php', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    }).catch(()=>{ /* ignore network errors */ });
+  } catch(e){
+    console.warn('logout fetch error', e);
+  }
+
+  // Clear client-side tokens/state (non-HttpOnly cookies can't be removed here)
+  try {
+    ['auth_token','auth_user','token','user'].forEach(k=>{
+      try{ localStorage.removeItem(k); }catch(e){}
+      try{ sessionStorage.removeItem(k); }catch(e){}
+    });
+    // best-effort clear cookies (HttpOnly cookies won't be affected)
+    document.cookie.split(';').forEach(c=>{
+      const name = c.split('=')[0].trim();
+      document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+    });
+  } catch(e){ console.warn('clear client auth state error', e); }
+
+  // Refresh UI
+  if (typeof window.loadUser === 'function') {
+    try { await window.loadUser(); } catch(e){}
+  }
+  // final fallback: reload page
+  try { window.location.reload(); } catch(e){ window.location.href = '/'; }
+}
