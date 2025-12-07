@@ -1,11 +1,11 @@
 ﻿-- db/all_migrations.sql
--- CLEAN, ROBUST, IDMPOTENT MIGRATION
+-- CLEAN, ROBUST, IDMPOTENT MIGRATION (fixed: guard index/DDL that referenced missing columns)
 -- Purpose: create core tables/indexes (safely if missing), ensure subjects table has a usable text column,
 -- insert canonical subject rows if missing, and map class -> subjects by grade.
 -- Notes:
 --  - This file is defensive: it avoids referencing columns that don't exist and avoids failing if objects already exist.
 --  - It sets client encoding to UTF8 so psql reads the file correctly.
---  - It does NOT add foreign key constraints referencing tables that may not yet exist; add those in a later constrained migration if needed.
+--  - It is safe to run multiple times (idempotent).
 --  - Run this after backing up your DB.
 
 SET client_encoding = 'UTF8';
@@ -21,7 +21,6 @@ DECLARE
 BEGIN
   SELECT id INTO _default_class_id FROM classes ORDER BY id LIMIT 1;
   IF _default_class_id IS NULL THEN
-    -- If classes table is empty, use NULL (if class_id is NOT NULL this will be handled later)
     RAISE NOTICE 'No classes found; default_class_id is NULL';
   ELSE
     RAISE NOTICE 'Using default_class_id=%', _default_class_id;
@@ -41,7 +40,6 @@ CREATE TABLE IF NOT EXISTS subjects (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- If the existing subjects table has different NOT NULL constraints, above CREATE TABLE IF NOT EXISTS will be skipped.
 -- Ensure title column exists (idempotent)
 DO $$
 BEGIN
@@ -83,16 +81,32 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- -----------------------
--- 4) Create indexes if missing (idempotent)
+-- 4) Create indexes if missing (guarded by existence of target table/column)
 -- -----------------------
-CREATE INDEX IF NOT EXISTS idx_class_subjects_class ON class_subjects (class_id);
-CREATE INDEX IF NOT EXISTS idx_drive_folders_class_subject ON drive_folders (class_subject_id);
-CREATE INDEX IF NOT EXISTS idx_attachments_drive_parent ON attachments (drive_parent_folder_id);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'class_subjects' AND relkind='r') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_class_subjects_class ON class_subjects (class_id)';
+  END IF;
+
+  -- idx_drive_folders_class_subject: only create if drive_folders table and column exist
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='drive_folders' AND column_name='class_subject_id') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_drive_folders_class_subject ON drive_folders (class_subject_id)';
+  ELSE
+    RAISE NOTICE 'Skipping idx_drive_folders_class_subject: drive_folders.class_subject_id missing';
+  END IF;
+
+  -- idx_attachments_drive_parent: only if attachments.drive_parent_folder_id exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attachments' AND column_name='drive_parent_folder_id') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_attachments_drive_parent ON attachments (drive_parent_folder_id)';
+  ELSE
+    RAISE NOTICE 'Skipping idx_attachments_drive_parent: attachments.drive_parent_folder_id missing';
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 -- -----------------------
 -- 5) Insert canonical subject rows safely (idempotent)
---    - Will insert subjects only when no existing subject (by normalized title/name/subject) matches.
---    - Will set both name and title to the subject string and class_id to a default if necessary.
 -- -----------------------
 DO $$
 DECLARE
@@ -103,16 +117,14 @@ DECLARE
   ];
   col_list text[] := ARRAY[]::text[];
   match_expr text;
-  insert_cols text;
+  insert_cols text[];
   default_class_id integer;
   subj text;
   i int;
   sql text;
 BEGIN
-  -- determine default class id to satisfy NOT NULL class_id (if present)
   SELECT id INTO default_class_id FROM classes ORDER BY id LIMIT 1;
 
-  -- discover which textual columns exist among title,name,subject
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='title') THEN
     col_list := array_append(col_list, 'title');
   END IF;
@@ -127,50 +139,40 @@ BEGIN
     RAISE EXCEPTION 'subjects table has no title|name|subject column';
   END IF;
 
-  -- build match expression COALESCE(title,name,subject) but only with existing columns
   IF array_length(col_list,1) = 1 THEN
     match_expr := col_list[1];
   ELSE
     match_expr := 'COALESCE(' || array_to_string(col_list, ',') || ')';
   END IF;
 
-  -- insert: fill both name and title columns (if exist) and class_id (if default available)
   FOR i IN array_lower(wanted,1)..array_upper(wanted,1) LOOP
     subj := wanted[i];
 
-    -- Build insert SQL dynamically to set whichever columns exist, but always avoid duplicates by matching match_expr
-    sql := 'INSERT INTO subjects(';
-    -- always try to set name if exists, set title if exists, set class_id if exists
     insert_cols := ARRAY[]::text[];
     IF array_position(col_list, 'name') IS NOT NULL THEN insert_cols := array_append(insert_cols,'name'); END IF;
     IF array_position(col_list, 'title') IS NOT NULL THEN insert_cols := array_append(insert_cols,'title'); END IF;
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='class_id') THEN insert_cols := array_append(insert_cols,'class_id'); END IF;
 
-    sql := sql || array_to_string(insert_cols, ',') || ') SELECT ';
+    sql := 'INSERT INTO subjects(' || array_to_string(insert_cols, ',') || ') SELECT ';
     -- values
-    DECLARE
-      vals text := '';
-    BEGIN
-      IF array_position(insert_cols,'name') IS NOT NULL THEN vals := vals || quote_literal(subj); END IF;
-      IF array_position(insert_cols,'title') IS NOT NULL THEN
-        IF vals <> '' THEN vals := vals || ', ' || quote_literal(subj); ELSE vals := vals || quote_literal(subj); END IF;
+    IF array_position(insert_cols,'name') IS NOT NULL THEN sql := sql || quote_literal(subj); END IF;
+    IF array_position(insert_cols,'title') IS NOT NULL THEN
+      IF sql NOT LIKE '%SELECT %' THEN sql := sql || ', '; END IF;
+      sql := sql || quote_literal(subj);
+    END IF;
+    IF array_position(insert_cols,'class_id') IS NOT NULL THEN
+      IF default_class_id IS NOT NULL THEN
+        sql := sql || ', ' || default_class_id::text;
+      ELSE
+        sql := sql || ', 0';
       END IF;
-      IF array_position(insert_cols,'class_id') IS NOT NULL THEN
-        IF default_class_id IS NOT NULL THEN
-          IF vals <> '' THEN vals := vals || ', ' || default_class_id::text; ELSE vals := vals || default_class_id::text; END IF;
-        ELSE
-          -- if no default, set 0 to avoid NOT NULL violation (table created above sets default 0)
-          IF vals <> '' THEN vals := vals || ', 0' ELSE vals := vals || '0'; END IF;
-        END IF;
-      END IF;
+    END IF;
 
-      sql := sql || vals || ' WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE ' || match_expr || ' = ' || quote_literal(subj) || ')';
-      EXECUTE sql;
-    END;
+    sql := sql || ' WHERE NOT EXISTS (SELECT 1 FROM subjects WHERE ' || match_expr || ' = ' || quote_literal(subj) || ')';
+    EXECUTE sql;
   END LOOP;
 END;
 $$ LANGUAGE plpgsql;
-
 
 -- -----------------------
 -- 6) Create a normalized temporary subjects map (id, title) using only existing columns
