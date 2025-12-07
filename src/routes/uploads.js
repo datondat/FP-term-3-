@@ -10,7 +10,7 @@ const driveLib = (process.env.GOOGLE_DRIVE_ENABLED === 'true') ? require('../lib
 const driveFolders = (process.env.GOOGLE_DRIVE_ENABLED === 'true') ? require('../lib/drive-folders') : null;
 
 const router = express.Router();
-const uploadDir = path.join(__dirname, '..', 'public', 'uploads', 'attachments');
+const uploadDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'attachments');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -45,7 +45,7 @@ router.post('/', requireAuth, upload.array('files', 12), async (req, res) => {
       let drive_parent_folder_id = null;
 
       if (driveLib && driveLib.enabled && driveFolders && driveFolders.enabled) {
-        // create/find folder class -> subject and upload
+        // ensure folder exists and upload
         const { driveFolderId } = await driveFolders.getOrCreateFolderFor(class_id, subject_id, className, subjectName);
         drive_parent_folder_id = driveFolderId;
 
@@ -53,8 +53,8 @@ router.post('/', requireAuth, upload.array('files', 12), async (req, res) => {
         storage_provider = 'gdrive';
         storage_key = uploaded.id;
 
-        // remove local copy to save disk
-        try { await fs.promises.unlink(path.join(uploadDir, path.basename(file.filename))); } catch (e) { /* ignore */ }
+        // remove local copy if desired
+        try { await fs.promises.unlink(path.join(uploadDir, path.basename(file.filename))); } catch (e) {}
       }
 
       const insert = await db.query(
@@ -74,7 +74,7 @@ router.post('/', requireAuth, upload.array('files', 12), async (req, res) => {
   }
 });
 
-// Download route unchanged
+// Download route
 router.get('/:id/download', requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -87,7 +87,7 @@ router.get('/:id/download', requireAuth, async (req, res) => {
     }
 
     if (!a.storage_provider || a.storage_provider === 'local') {
-      const filePath = path.join(__dirname, '..', 'public', 'uploads', 'attachments', a.storage_key);
+      const filePath = path.join(__dirname, '..', '..', 'public', 'uploads', 'attachments', a.storage_key);
       return res.download(filePath, a.filename);
     }
 

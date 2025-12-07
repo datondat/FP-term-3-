@@ -21,11 +21,17 @@ const auth = new google.auth.GoogleAuth({
 
 const drive = google.drive({ version: 'v3', auth });
 
-async function uploadFile(localPath, filename, mimeType) {
+async function uploadFile(localPath, filename, mimeType, parents = null) {
   const fileMetadata = { name: filename };
-  if (FOLDER_ID) fileMetadata.parents = [FOLDER_ID];
+  if (parents) fileMetadata.parents = parents;
+  else if (FOLDER_ID) fileMetadata.parents = [FOLDER_ID];
   const media = { mimeType: mimeType || 'application/octet-stream', body: fs.createReadStream(localPath) };
-  const res = await drive.files.create({ requestBody: fileMetadata, media, fields: 'id, name, mimeType, webViewLink, webContentLink, size, parents' });
+
+  const res = await drive.files.create({
+    requestBody: fileMetadata,
+    media,
+    fields: 'id, name, mimeType, webViewLink, webContentLink, size, parents'
+  });
   return res.data;
 }
 

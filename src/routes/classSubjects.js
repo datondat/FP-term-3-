@@ -21,7 +21,7 @@ router.get('/:id/subjects', async (req, res) => {
   }
 });
 
-// POST /api/classes/:id/subjects  { subject_ids: [1,2,3] }
+// POST /api/classes/:id/subjects  { subject_ids: [1,2,3] } - replace mapping
 router.post('/:id/subjects', async (req, res) => {
   try {
     const classId = parseInt(req.params.id, 10);

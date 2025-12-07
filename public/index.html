@@ -144,7 +144,7 @@
     </footer>
 
     <script>
-      // full class -> subjects map
+      // --- hardcoded class -> subjects map (keeps original behavior) ---
       const classSubjects = {
         "Lớp 6": ["Toán","Ngữ văn","Tiếng Anh","Khoa học tự nhiên","Lịch sử","Địa lý","Tin học"],
         "Lớp 7": ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Sinh học","Công nghệ","Tin học"],
@@ -156,25 +156,59 @@
         "Giáo án - Đề thi": ["Đề thi THCS","Đề thi THPT","Giáo án mẫu"]
       };
 
+      // Optional: if you have a mapping from class name -> numeric class_id in DB,
+      // set the map here (e.g. { "Lớp 6": 3, "Lớp 7": 4, ... })
+      // If set, the script will try to fetch dynamic subjects from /api/classes/:id/subjects
+      const classNameToId = {
+        // "Lớp 6": 1,
+        // "Lớp 7": 2
+      };
+
       const serviceArea = document.getElementById('serviceArea');
       const categoryArea = document.getElementById('categoryArea');
       const subjectsView = document.getElementById('subjectsView');
       const resourcesView = document.getElementById('resourcesView');
 
-      // show subjects for a class
-      function showSubjects(className) {
-        const subjects = classSubjects[className] || [];
+      // try to fetch subjects from API (by class id). If fails, return null to indicate fallback needed.
+      async function fetchSubjectsFromApi(classId) {
+        if (!classId) return null;
+        try {
+          const resp = await fetch('/api/classes/' + encodeURIComponent(classId) + '/subjects');
+          if (!resp.ok) return null;
+          const j = await resp.json();
+          if (!j.ok || !Array.isArray(j.subjects)) return null;
+          // transform into array of titles
+          return j.subjects.map(s => s.title);
+        } catch (err) {
+          return null;
+        }
+      }
+
+      // show subjects for a className; prefer API when mapping available
+      async function showSubjects(className) {
+        const subjectsFromMap = classSubjects[className] || [];
         const grid = document.getElementById("subjectsGrid");
         const title = document.getElementById("subjectsTitle");
         grid.innerHTML = "";
         title.textContent = `Các môn của ${className}`;
-        if (subjects.length === 0) {
+
+        // if we have className->id mapping, try API first
+        const classId = classNameToId[className] || null;
+        let subjects = null;
+        if (classId) {
+          const apiList = await fetchSubjectsFromApi(classId);
+          if (apiList && apiList.length) subjects = apiList;
+        }
+
+        // fallback to hardcoded map
+        if (!subjects) subjects = subjectsFromMap;
+
+        if (!subjects || subjects.length === 0) {
           grid.innerHTML = "<p>Chưa có môn cho lớp này.</p>";
         } else {
           subjects.forEach((sub) => {
             const card = document.createElement("div");
             card.className = "subject-card";
-            // When clicking the subject card, show resources inline (no modal)
             card.innerHTML = `
               <div class="subject-name">${sub}</div>
               <div style="display:flex;gap:8px;justify-content:center">

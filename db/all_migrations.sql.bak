@@ -1,23 +1,6 @@
-﻿-- db/all_migrations.sql
+-- db/all_migrations.sql
 -- Combined migrations: drive_folders, class_subjects, add columns, subjects seed, indexes.
 -- Idempotent: safe to run multiple times.
-SET client_encoding = 'UTF8';
-
-DO $$
-BEGIN
-  -- If subjects.title column missing, add it and copy values from name/subject
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'subjects' AND column_name = 'title'
-  ) THEN
-    ALTER TABLE subjects ADD COLUMN title text;
-    UPDATE subjects
-    SET title = COALESCE(name, subject)
-    WHERE (title IS NULL OR title = '') AND (COALESCE(name, subject) IS NOT NULL);
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
 
 -- 1) drive_folders table (map class -> subject -> drive folder id)
 CREATE TABLE IF NOT EXISTS drive_folders (
@@ -52,20 +35,20 @@ CREATE INDEX IF NOT EXISTS idx_class_subjects_class ON class_subjects(class_id);
 -- 5) Insert subjects used for grade groups (only if missing)
 WITH wanted(subject) AS (
   VALUES
-    ('Ngá»¯ vÄƒn'),
-    ('ToÃ¡n'),
-    ('Tiáº¿ng Anh'),
-    ('GiÃ¡o dá»¥c cÃ´ng dÃ¢n'),
-    ('Lá»‹ch sá»­ vÃ  Äá»‹a lÃ­'),
-    ('Khoa há»c tá»± nhiÃªn'),
-    ('CÃ´ng nghá»‡'),
-    ('Tin há»c'),
-    ('Lá»‹ch sá»­'),
-    ('Äá»‹a lÃ­'),
-    ('GiÃ¡o dá»¥c kinh táº¿ vÃ  phÃ¡p luáº­t'),
-    ('Váº­t lÃ­'),
-    ('HoÃ¡ há»c'),
-    ('Sinh há»c')
+    ('Ngữ văn'),
+    ('Toán'),
+    ('Tiếng Anh'),
+    ('Giáo dục công dân'),
+    ('Lịch sử và Địa lí'),
+    ('Khoa học tự nhiên'),
+    ('Công nghệ'),
+    ('Tin học'),
+    ('Lịch sử'),
+    ('Địa lí'),
+    ('Giáo dục kinh tế và pháp luật'),
+    ('Vật lí'),
+    ('Hoá học'),
+    ('Sinh học')
 )
 INSERT INTO subjects (title)
 SELECT subject FROM wanted w
@@ -78,14 +61,14 @@ FROM classes c
 CROSS JOIN subjects s
 WHERE c.name ~ '^[6-9]'
   AND s.title IN (
-    'Ngá»¯ vÄƒn',
-    'ToÃ¡n',
-    'Tiáº¿ng Anh',
-    'GiÃ¡o dá»¥c cÃ´ng dÃ¢n',
-    'Lá»‹ch sá»­ vÃ  Äá»‹a lÃ­',
-    'Khoa há»c tá»± nhiÃªn',
-    'CÃ´ng nghá»‡',
-    'Tin há»c'
+    'Ngữ văn',
+    'Toán',
+    'Tiếng Anh',
+    'Giáo dục công dân',
+    'Lịch sử và Địa lí',
+    'Khoa học tự nhiên',
+    'Công nghệ',
+    'Tin học'
   )
   AND NOT EXISTS (
     SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.subject_id = s.id
@@ -98,17 +81,17 @@ FROM classes c
 CROSS JOIN subjects s
 WHERE c.name ~ '^(10|11|12)'
   AND s.title IN (
-    'Ngá»¯ vÄƒn',
-    'ToÃ¡n',
-    'Tiáº¿ng Anh',
-    'Lá»‹ch sá»­',
-    'Äá»‹a lÃ­',
-    'GiÃ¡o dá»¥c kinh táº¿ vÃ  phÃ¡p luáº­t',
-    'Váº­t lÃ­',
-    'HoÃ¡ há»c',
-    'Sinh há»c',
-    'CÃ´ng nghá»‡',
-    'Tin há»c'
+    'Ngữ văn',
+    'Toán',
+    'Tiếng Anh',
+    'Lịch sử',
+    'Địa lí',
+    'Giáo dục kinh tế và pháp luật',
+    'Vật lí',
+    'Hoá học',
+    'Sinh học',
+    'Công nghệ',
+    'Tin học'
   )
   AND NOT EXISTS (
     SELECT 1 FROM class_subjects cs WHERE cs.class_id = c.id AND cs.subject_id = s.id

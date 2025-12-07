@@ -33,9 +33,9 @@ async function createFolder(parentId, folderName) {
   return res.data;
 }
 
-// classId, subjectId numeric (may be null). className and subjectName used for folder names.
+// Ensure a subject folder exists inside a class folder (class -> subject).
+// classId/subjectId may be null, but className/subjectName are used to create/find folders.
 async function getOrCreateFolderFor(classId, subjectId, className, subjectName) {
-  // Try DB mapping first
   const mapRes = await db.query('SELECT drive_folder_id FROM drive_folders WHERE class_id = $1 AND subject_id = $2 LIMIT 1', [classId, subjectId]);
   if (mapRes.rows.length) return { driveFolderId: mapRes.rows[0].drive_folder_id, fromDb: true };
 
