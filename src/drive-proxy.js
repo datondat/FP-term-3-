@@ -6,20 +6,20 @@
  * Place this file under src/ (no new folder creation).
  *
  * Requirements:
- *  - Node.js (>=12). If Node >=18 you can use global fetch (see notes).
+ *  - Node.js (>=12). If Node >=18 you can use global fetch (change accordingly).
  *  - Environment variable GOOGLE_API_KEY with a valid Google API key (Drive API enabled).
  *
- * Usage (example):
+ * Usage:
  *  - npm install express node-fetch@2 dotenv
  *  - create .env with GOOGLE_API_KEY=YOUR_KEY
  *  - node src/drive-proxy.js
  *
  * Notes:
- *  - The code prefers public/shared Drive items. For private Drive access you'll need OAuth/service-account.
- *  - If you run Node >=18 you can remove node-fetch dependency and use global fetch (small change noted below).
+ *  - Works best if Drive items/folders under `root` are shared "Anyone with the link".
+ *  - For private Drive access you must implement OAuth/service-account (not covered here).
  */
 const express = require('express');
-const fetch = require('node-fetch'); // install node-fetch@2 for require() compatibility
+const fetch = require('node-fetch'); // node-fetch@2
 require('dotenv').config();
 
 const app = express();
@@ -27,12 +27,10 @@ const PORT = process.env.PORT || 5000;
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 if (!API_KEY) {
-  console.warn('WARNING: GOOGLE_API_KEY not set. Drive listing may fail for private/non-public folders.');
+  console.warn('WARNING: GOOGLE_API_KEY not set. Drive listing may fail for non-public folders.');
 }
 
-/**
- * Call Google Drive files.list with query q and requested fields.
- */
+// Call Drive API files.list
 async function driveListFiles(q, fields = 'files(id,name,mimeType,webViewLink,thumbnailLink)') {
   const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&key=${API_KEY}&pageSize=1000`;
   const r = await fetch(url, { method: 'GET' });
@@ -43,10 +41,6 @@ async function driveListFiles(q, fields = 'files(id,name,mimeType,webViewLink,th
   return r.json();
 }
 
-/**
- * Find a child folder under parentId whose name matches or contains `needle`.
- * Returns first exact match, otherwise first contains match.
- */
 async function findChildFolder(parentId, needle) {
   const q = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
   const res = await driveListFiles(q, 'files(id,name)');
@@ -62,9 +56,6 @@ async function findChildFolder(parentId, needle) {
   return best || null;
 }
 
-/**
- * List non-folder files in a folder
- */
 async function listFilesInFolder(folderId) {
   const q = `'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`;
   const res = await driveListFiles(q, 'files(id,name,mimeType,webViewLink,thumbnailLink)');
@@ -77,18 +68,7 @@ function drivePreviewUrl(file) {
   return null;
 }
 
-/**
- * GET /api/drive-files?root=<FOLDER_ID>&class=<CLASS>&subject=<SUBJECT>
- * - root: required (Drive folder id)
- * - class: optional (e.g. 6)
- * - subject: optional (e.g. Toán)
- *
- * Strategy:
- * 1) If class provided, look for child folder under root matching "Lớp X", "Lop X" or "X"
- *    then try to find a subject folder inside that class folder.
- * 2) If not found, try to find subject folder directly under root.
- * 3) If not found, list files under root.
- */
+// API route
 app.get('/api/drive-files', async (req, res) => {
   const root = req.query.root;
   const klass = req.query.class || req.query.lop || req.query.grade || '';
@@ -101,11 +81,7 @@ app.get('/api/drive-files', async (req, res) => {
     const debug = [];
 
     if (klass) {
-      const candidates = [
-        `Lớp ${klass}`,
-        `Lop ${klass}`,
-        `${klass}`
-      ];
+      const candidates = [`Lớp ${klass}`, `Lop ${klass}`, `${klass}`];
       for (const cand of candidates) {
         const found = await findChildFolder(root, cand);
         debug.push({ tryClassCandidate: cand, found: !!found, folder: found && found.name });
@@ -138,7 +114,6 @@ app.get('/api/drive-files', async (req, res) => {
     }
 
     const files = await listFilesInFolder(targetFolderId);
-
     const mapped = files.map(f => ({
       id: f.id,
       name: f.name,
@@ -155,7 +130,7 @@ app.get('/api/drive-files', async (req, res) => {
   }
 });
 
-// serve static client (public/) if present
+// serve static public/
 app.use(express.static('public'));
 
 app.listen(PORT, () => {

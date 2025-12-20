@@ -212,3 +212,60 @@ a:focus-visible,button:focus-visible{outline:3px solid rgba(209,122,35,0.12);bor
   .subject-books{ gap:8px }
   .subject-books .book-link{ padding:8px 10px; font-size:13px; }
 }
+
+/* --- AUTH MODAL (moved here from inline) --- */
+.auth-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(10,12,16,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.auth-modal{
+  width:420px;
+  max-width:calc(100% - 32px);
+  background:#fff;
+  border-radius:12px;
+  padding:18px;
+  border:1px solid rgba(0,0,0,0.06);
+  box-shadow:0 14px 40px rgba(10,20,40,0.12);
+  font-family:Inter,system-ui,Arial;
+}
+.auth-modal h3{margin:0 0 10px 0;font-size:18px}
+.auth-modal .desc{color:var(--muted);font-size:13px;margin-bottom:12px}
+.auth-form{display:flex;flex-direction:column;gap:10px}
+.auth-form input{
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  outline:none;
+  font-size:14px;
+  background:#fff;
+}
+.auth-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.btn.auth-primary{
+  background:var(--primary);
+  color:#fff;
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn.auth-ghost{
+  background:transparent;
+  border:1px solid var(--border);
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.auth-error{color:#b91c1c;font-size:13px;margin-top:6px}
+.auth-footer{margin-top:12px;font-size:13px;color:var(--muted)}
+.auth-link{color:var(--primary);cursor:pointer;text-decoration:underline}
+
+@media (max-width:520px){
+  .auth-modal{width:92%}
+}
+/* --- end auth modal styles --- */

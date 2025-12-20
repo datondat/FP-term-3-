@@ -7,7 +7,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="main.css">
+  <!-- auth CSS moved to main.css -->
 </head>
+
 <body>
   <header class="top-header">
     <div class="header-left">
@@ -38,8 +40,10 @@
       <div class="user-area">
         <img src="avatar.png" alt="avatar" class="avatar" id="avatarBtn">
         <div id="authControls" class="auth-controls">
+          <!-- Keep anchors so existing code works. We'll intercept clicks in JS. -->
           <a id="link-login" class="btn btn-ghost" href="login.html"><i class="fa fa-right-to-bracket"></i> Đăng nhập</a>
           <a id="link-register" class="btn" href="register.html"><i class="fa fa-user-plus"></i> Đăng ký</a>
+          <!-- Logout buttons: there are two in the markup (header and user-card). We'll show/hide them by class .btn-logout -->
           <button id="btn-logout-header" class="btn btn-ghost btn-logout" style="display:none"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
         </div>
       </div>
@@ -52,7 +56,7 @@
         <h3>Thông tin tài khoản</h3>
         <div id="user-info" class="muted"></div>
         <div class="user-actions" style="margin-top:12px">
-          <button id="btn-logout" class="btn btn-ghost btn-logout"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
+          <button id="btn-logout" class="btn btn-ghost btn-logout" style="display:none"><i class="fa fa-sign-out-alt"></i> Đăng xuất</button>
           <button id="btn-test" class="btn"><i class="fa fa-lock"></i> Gọi API bảo mật</button>
         </div>
         <div id="api-result" class="api-result" style="margin-top:10px"></div>
@@ -214,7 +218,153 @@
     })();
   </script>
 
-  <!-- Full app runtime -->
+  <!-- Inline auth JS (no extra files). This ensures update of logout buttons immediately after login/register -->
+  <script>
+  (function(){
+    'use strict';
+    // Helpers
+    function $(s){ return document.querySelector(s); }
+    function $all(s){ return Array.from(document.querySelectorAll(s)); }
+    function createModal(mode){
+      const overlay = document.createElement('div'); overlay.className = 'auth-overlay';
+      const modal = document.createElement('div'); modal.className = 'auth-modal';
+      const h = document.createElement('h3'); h.textContent = mode === 'login' ? 'Đăng nhập' : 'Đăng ký';
+      const desc = document.createElement('div'); desc.className = 'desc'; desc.textContent = mode === 'login' ? 'Đăng nhập để truy cập khu vực riêng.' : 'Tạo tài khoản mới (demo local).';
+      const form = document.createElement('div'); form.className = 'auth-form';
+      // inputs
+      const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Email';
+      const username = document.createElement('input'); username.type = 'text'; username.placeholder = 'Tên tài khoản';
+      const password = document.createElement('input'); password.type = 'password'; password.placeholder = 'Mật khẩu';
+      const password2 = document.createElement('input'); password2.type = 'password'; password2.placeholder = 'Nhập lại mật khẩu';
+      if(mode === 'login'){
+        form.appendChild(username);
+        form.appendChild(password);
+      } else {
+        form.appendChild(email);
+        form.appendChild(username);
+        form.appendChild(password);
+        form.appendChild(password2);
+      }
+      const error = document.createElement('div'); error.className = 'auth-error'; error.style.display = 'none';
+      const actions = document.createElement('div'); actions.className = 'auth-actions';
+      const btnCancel = document.createElement('button'); btnCancel.className = 'btn auth-ghost'; btnCancel.type = 'button'; btnCancel.textContent = 'Hủy';
+      const btnSubmit = document.createElement('button'); btnSubmit.className = 'btn auth-primary'; btnSubmit.type = 'button'; btnSubmit.textContent = mode === 'login' ? 'Đăng nhập' : 'Đăng ký';
+      actions.appendChild(btnCancel); actions.appendChild(btnSubmit);
+      const footer = document.createElement('div'); footer.className = 'auth-footer';
+      if(mode === 'login'){
+        footer.innerHTML = 'Bạn chưa có tài khoản? <span class="auth-link" data-switch="register">Đăng ký</span>';
+      } else {
+        footer.innerHTML = 'Đã có tài khoản? <span class="auth-link" data-switch="login">Đăng nhập</span>';
+      }
+      modal.appendChild(h); modal.appendChild(desc); modal.appendChild(form); modal.appendChild(error); modal.appendChild(actions); modal.appendChild(footer);
+      overlay.appendChild(modal);
+
+      // behavior
+      btnCancel.addEventListener('click', ()=> overlay.remove());
+      overlay.addEventListener('click', (e)=> { if(e.target === overlay) overlay.remove(); });
+      footer.querySelector('.auth-link').addEventListener('click', (e)=> {
+        const to = e.target.dataset.switch;
+        overlay.remove();
+        showAuthModal(to);
+      });
+
+      btnSubmit.addEventListener('click', ()=> {
+        error.style.display = 'none'; error.textContent = '';
+        try {
+          if(mode === 'login'){
+            const u = username.value.trim(), p = password.value;
+            if(!u || !p) throw new Error('Nhập tên tài khoản và mật khẩu');
+            const users = JSON.parse(localStorage.getItem('fp_users') || '{}');
+            const rec = users[u];
+            if(!rec) throw new Error('Tài khoản không tồn tại (demo)');
+            if(rec.password !== p) throw new Error('Sai mật khẩu (demo)');
+            // success
+            localStorage.setItem('fp_user', JSON.stringify({ username: u, email: rec.email || '' }));
+            updateAuthUI();
+            overlay.remove();
+          } else {
+            const e = email.value.trim(), u = username.value.trim(), p = password.value, p2 = password2.value;
+            if(!e || !u || !p) throw new Error('Vui lòng điền đầy đủ thông tin');
+            if(p !== p2) throw new Error('Mật khẩu xác nhận không khớp');
+            const users = JSON.parse(localStorage.getItem('fp_users') || '{}');
+            if(users[u]) throw new Error('Tên tài khoản đã tồn tại (demo)');
+            users[u] = { email: e, password: p };
+            localStorage.setItem('fp_users', JSON.stringify(users));
+            localStorage.setItem('fp_user', JSON.stringify({ username: u, email: e }));
+            updateAuthUI();
+            overlay.remove();
+          }
+        } catch(err) {
+          error.style.display = ''; error.textContent = String(err.message || err);
+        }
+      });
+
+      document.body.appendChild(overlay);
+      setTimeout(()=> {
+        const first = modal.querySelector('input');
+        if(first) first.focus();
+      }, 20);
+    }
+
+    function showAuthModal(mode){ createModal(mode === 'register' ? 'register' : 'login'); }
+
+    function updateAuthUI(){
+      const userRaw = localStorage.getItem('fp_user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const linkLogin = $('#link-login');
+      const linkRegister = $('#link-register');
+      const logoutBtns = $all('.btn-logout');
+      const userInfo = $('#user-info');
+      const userCard = $('#user-card');
+
+      if(user){
+        if(linkLogin) linkLogin.style.display = 'none';
+        if(linkRegister) linkRegister.style.display = 'none';
+        logoutBtns.forEach(b=> b.style.display = '');
+        if(userInfo) userInfo.textContent = (user.username || user.email || 'Người dùng');
+        if(userCard) userCard.classList.remove('hidden');
+      } else {
+        if(linkLogin) linkLogin.style.display = '';
+        if(linkRegister) linkRegister.style.display = '';
+        logoutBtns.forEach(b=> b.style.display = 'none');
+        if(userCard) userCard.classList.add('hidden');
+      }
+    }
+
+    function doLogout(){
+      localStorage.removeItem('fp_user');
+      updateAuthUI();
+    }
+
+    // intercept clicks on the header links
+    document.addEventListener('click', function(e){
+      const t = e.target;
+      if(t.matches && t.matches('#link-login')){
+        e.preventDefault();
+        showAuthModal('login');
+        return;
+      }
+      if(t.matches && t.matches('#link-register')){
+        e.preventDefault();
+        showAuthModal('register');
+        return;
+      }
+      if(t.closest && t.closest('.btn-logout')){
+        e.preventDefault();
+        doLogout();
+        return;
+      }
+    }, false);
+
+    document.addEventListener('DOMContentLoaded', function(){
+      updateAuthUI();
+      // ensure header logout and main logout have same visibility
+      // in case there are multiple logout elements we already toggle via class .btn-logout
+    });
+  })();
+  </script>
+
+  <!-- Existing runtime script for page behavior (keep as external) -->
   <script src="index.js"></script>
 </body>
 </html>

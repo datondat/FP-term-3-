@@ -5,34 +5,38 @@
   <title>Drive Viewer (client-only)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <style>
-    body{font-family:Arial;margin:16px;background:#f7f7f7}
+    body{font-family:Arial,Helvetica,sans-serif;margin:16px;background:#f7f7f7}
     .wrap{max-width:1000px;margin:0 auto}
-    input{padding:8px;border-radius:6px;border:1px solid #ddd}
+    input{padding:8px;border-radius:6px;border:1px solid #ddd;margin-right:6px}
     button{padding:8px 12px;border-radius:6px;background:#2d7cff;color:#fff;border:0}
     .list{background:#fff;padding:12px;border-radius:8px;margin-top:12px}
-    .file{padding:8px;border-bottom:1px solid #f0f0f0}
+    .file{padding:8px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center}
+    .preview{margin-top:12px}
+    iframe{width:100%;height:70vh;border:0}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h2>Drive Viewer — Client-only (Quick test)</h2>
     <div>
-      <input id="apiKey" placeholder="Google API Key (test only)" style="width:360px"/>
-      <input id="root" placeholder="Drive root folder id" style="width:360px"/>
+      <input id="apiKey" placeholder="Google API Key (test only)" style="width:320px"/>
+      <input id="root" placeholder="Drive root folder id" style="width:320px"/>
       <input id="cls" placeholder="Lớp (6)" style="width:80px"/>
       <input id="sub" placeholder="Môn (Toán)" style="width:140px"/>
       <button id="btn">Tìm</button>
     </div>
-    <div class="list" id="filesList">Chưa có</div>
-    <div id="preview" style="margin-top:12px"></div>
+    <div class="list" id="filesList">Chưa có file.</div>
+    <div id="preview" class="preview"></div>
+    <p style="color:#666;font-size:13px">Chú ý: API key sẽ hiển thị trong client — chỉ dùng để test.</p>
   </div>
 
   <script>
     function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    async function apiListFiles(apiKey, q){
+
+    async function apiListFiles(apiKey, q) {
       const url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name,mimeType,webViewLink,thumbnailLink)&key=' + encodeURIComponent(apiKey) + '&pageSize=1000';
       const res = await fetch(url);
-      if(!res.ok) throw new Error('Drive API error ' + res.status);
+      if(!res.ok) throw new Error('Drive API error ' + res.status + ' ' + res.statusText);
       return res.json();
     }
 
@@ -41,11 +45,13 @@
       const root = document.getElementById('root').value.trim();
       const cls = document.getElementById('cls').value.trim();
       const sub = document.getElementById('sub').value.trim();
-      if(!apiKey || !root){ alert('Nhập apiKey và root'); return; }
       const listEl = document.getElementById('filesList');
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      if(!apiKey || !root){ alert('Nhập apiKey và root'); return; }
       listEl.innerHTML = 'Đang tìm...';
       try {
-        // Try to find class folder
+        // Try class folder under root
         if(cls){
           const candidates = [`Lớp ${cls}`, `Lop ${cls}`, `${cls}`];
           let classFolder = null;
@@ -66,7 +72,7 @@
             }
           }
         }
-        // fallback: try subject under root if provided
+        // fallback: try subject folder under root
         if(sub){
           const q = `'${root}' in parents and mimeType = 'application/vnd.google-apps.folder' and name contains '${sub}' and trashed = false`;
           const r = await apiListFiles(apiKey, q);
@@ -86,16 +92,51 @@
       }
     });
 
-    function renderFiles(files){
+    function renderFiles(files) {
       const listEl = document.getElementById('filesList');
-      if(!files || files.length===0){ listEl.innerHTML = 'Không tìm thấy file.'; return; }
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      if(!files || files.length === 0){ listEl.innerHTML = 'Không tìm thấy file.'; return; }
       listEl.innerHTML = '';
-      files.forEach(f=>{
-        const div = document.createElement('div'); div.className='file';
-        div.innerHTML = `<strong>${escapeHtml(f.name)}</strong> <small>${escapeHtml(f.mimeType)}</small> <a href="${f.webViewLink||('https://drive.google.com/file/d/'+f.id+'/view')}" target="_blank">Mở</a>`;
+      files.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'file';
+        const left = document.createElement('div');
+        left.innerHTML = `<strong>${escapeHtml(f.name)}</strong> <div style="font-size:12px;color:#666">${escapeHtml(f.mimeType)}</div>`;
+        const right = document.createElement('div');
+        const btn = document.createElement('button');
+        btn.textContent = 'Xem';
+        btn.style.marginRight = '6px';
+        btn.addEventListener('click', ()=> previewFile(f));
+        const a = document.createElement('a');
+        a.textContent = 'Mở tab mới';
+        a.href = f.webViewLink || ('https://drive.google.com/file/d/' + f.id + '/view');
+        a.target = '_blank';
+        right.appendChild(btn);
+        right.appendChild(a);
+        div.appendChild(left);
+        div.appendChild(right);
         listEl.appendChild(div);
       });
     }
+
+    function previewFile(f){
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      const url = f.webViewLink || ('https://drive.google.com/file/d/' + f.id + '/view');
+      if((f.mimeType||'').toLowerCase().includes('pdf')){
+        preview.innerHTML = `<iframe src="${url}"></iframe>`;
+        return;
+      }
+      if((f.mimeType||'').startsWith('image/')){
+        preview.innerHTML = `<img src="https://drive.google.com/uc?export=download&id=${f.id}" style="max-width:100%;height:auto">`;
+        return;
+      }
+      preview.innerHTML = `<iframe src="${url}"></iframe>`;
+    }
+
+    // auto-fill from querystring if provided
+    (function(){ const p = new URLSearchParams(window.location.search); if(p.get('root')) document.getElementById('root').value = p.get('root'); if(p.get('class')) document.getElementById('cls').value = p.get('class'); if(p.get('subject')) document.getElementById('sub').value = p.get('subject'); })();
   </script>
 </body>
 </html>
