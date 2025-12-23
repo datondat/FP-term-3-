@@ -1,1 +1,1 @@
-require('./drive-proxy');
+// Drive proxy is now mounted in server.js

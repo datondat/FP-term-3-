@@ -1,29 +1,20 @@
 /**
  * src/drive-proxy.js
- * Minimal Express server providing:
+ * Express router providing:
  *  GET /api/drive-files?root=<FOLDER_ID>&class=<CLASS>&subject=<SUBJECT>
  *
- * Place this file under src/ (no new folder creation).
- *
  * Requirements:
- *  - Node.js (>=12). If Node >=18 you can use global fetch (change accordingly).
  *  - Environment variable GOOGLE_API_KEY with a valid Google API key (Drive API enabled).
- *
- * Usage:
- *  - npm install express node-fetch@2 dotenv
- *  - create .env with GOOGLE_API_KEY=YOUR_KEY
- *  - node src/drive-proxy.js
  *
  * Notes:
  *  - Works best if Drive items/folders under `root` are shared "Anyone with the link".
  *  - For private Drive access you must implement OAuth/service-account (not covered here).
  */
 const express = require('express');
-const fetch = require('node-fetch'); // node-fetch@2
+const fetch = require('node-fetch');
 require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+const router = express.Router();
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 if (!API_KEY) {
@@ -69,7 +60,7 @@ function drivePreviewUrl(file) {
 }
 
 // API route
-app.get('/api/drive-files', async (req, res) => {
+router.get('/drive-files', async (req, res) => {
   const root = req.query.root;
   const klass = req.query.class || req.query.lop || req.query.grade || '';
   const subject = req.query.subject || req.query.mon || req.query.sub || '';
@@ -130,10 +121,4 @@ app.get('/api/drive-files', async (req, res) => {
   }
 });
 
-// serve static public/
-app.use(express.static('public'));
-
-app.listen(PORT, () => {
-  console.log(`Drive proxy server listening on ${PORT}`);
-  if (!API_KEY) console.log('No GOOGLE_API_KEY configured. Public folder listing may fail.');
-});
+module.exports = router;

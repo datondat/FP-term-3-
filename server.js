@@ -2,8 +2,6 @@
 'use strict';
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
-const morgan = require('morgan');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -15,12 +13,28 @@ console.log('CWD :', process.cwd());
 console.log('PID :', process.pid);
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || true,
-  credentials: true
-};
-app.use(cors(corsOptions));
-app.use(morgan(process.env.LOG_FORMAT || 'dev'));
+// Optional CORS middleware
+try {
+  const cors = require('cors');
+  const corsOptions = {
+    origin: process.env.CORS_ORIGIN || true,
+    credentials: true
+  };
+  app.use(cors(corsOptions));
+  console.log('CORS enabled');
+} catch (e) {
+  console.log('CORS not available (optional)');
+}
+
+// Optional Morgan logging
+try {
+  const morgan = require('morgan');
+  app.use(morgan(process.env.LOG_FORMAT || 'dev'));
+  console.log('Morgan logging enabled');
+} catch (e) {
+  console.log('Morgan logging not available (optional)');
+}
+
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -71,6 +85,15 @@ try {
   mounted.push('/api/classes');
 } catch (e) {
   console.warn('classSubjects router not mounted:', e.message);
+}
+
+// mount drive-proxy router
+try {
+  const driveProxyRouter = require('./src/drive-proxy');
+  app.use('/api', driveProxyRouter);
+  mounted.push('/api (drive)');
+} catch (e) {
+  console.warn('drive-proxy router not mounted:', e.message);
 }
 
 console.log('Mounted routers:', mounted.length ? mounted.join(', ') : '(none)');
