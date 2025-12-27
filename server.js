@@ -1,4 +1,3 @@
-// server.js (patched to mount uploads & classSubjects routes)
 'use strict';
 const express = require('express');
 const path = require('path');
@@ -12,6 +11,18 @@ console.log('File:', __filename);
 console.log('CWD :', process.cwd());
 console.log('PID :', process.pid);
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION', err && err.stack ? err.stack : err);
+  // Graceful exit
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason, p) => {
+  console.error('UNHANDLED REJECTION at Promise', p, 'reason:', reason);
+  // Optionally exit or keep running; here we exit to avoid unknown state
+  process.exit(1);
+});
 
 // Optional CORS middleware
 try {
@@ -32,7 +43,7 @@ try {
   app.use(morgan(process.env.LOG_FORMAT || 'dev'));
   console.log('Morgan logging enabled');
 } catch (e) {
-  console.log('Morgan logging not available (optional)');
+  console.log('Morgan not available (optional)');
 }
 
 app.use(express.json({ limit: '5mb' }));
@@ -41,59 +52,60 @@ app.use(express.urlencoded({ extended: true }));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 if (fs.existsSync(PUBLIC_DIR)) {
   app.use(express.static(PUBLIC_DIR));
-  app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads')));
+  const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
+  if (fs.existsSync(uploadsDir)) {
+    app.use('/uploads', express.static(uploadsDir));
+  }
 } else {
   console.warn('Warning: public directory not found:', PUBLIC_DIR);
 }
 
+function tryMount(modulePath, mountPoint, description) {
+  try {
+    const mod = require(modulePath);
+    // If module exports a function that accepts (app) -> register itself
+    if (typeof mod === 'function' && mod.length >= 1) {
+      // treat as register(app) function
+      mod(app);
+      console.log(`Mounted ${description || modulePath} via register(app)`);
+      return mountPoint;
+    }
+    // If exports an express Router or app-like (has 'use' and 'route' etc)
+    if (mod && (typeof mod === 'object') && (typeof mod.use === 'function' || typeof mod.handle === 'function' || mod.stack)) {
+      app.use(mountPoint, mod);
+      console.log(`Mounted ${description || modulePath} at ${mountPoint}`);
+      return mountPoint;
+    }
+    // If exports directly a Router-like (function) -> mount it
+    if (typeof mod === 'function') {
+      app.use(mountPoint, mod);
+      console.log(`Mounted ${description || modulePath} (callable) at ${mountPoint}`);
+      return mountPoint;
+    }
+    console.warn(`Module ${modulePath} loaded but not mountable (unexpected export).`);
+    return null;
+  } catch (e) {
+    console.warn(`${description || modulePath} not mounted: ${e && e.message ? e.message : e}`);
+    return null;
+  }
+}
+
 const mounted = [];
-try {
-  const authRouter = require('./src/routes/auth');
-  app.use('/api/auth', authRouter);
-  mounted.push('/api/auth');
-} catch (e) {
-  console.warn('auth router not mounted:', e.message);
-}
-try {
-  const commentsRouter = require('./src/routes/comments');
-  app.use('/api/comments', commentsRouter);
-  mounted.push('/api/comments');
-} catch (e) {
-  console.warn('comments router not mounted:', e.message);
-}
-try {
-  const searchRouter = require('./src/routes/search');
-  app.use('/api', searchRouter);
-  mounted.push('/api (search)');
-} catch (e) {
-  console.warn('search router not mounted:', e.message);
-}
 
-// mount uploads router (optional — will fail silently if file missing)
-try {
-  const uploadsRouter = require('./src/routes/uploads');
-  app.use('/api/uploads', uploadsRouter);
-  mounted.push('/api/uploads');
-} catch (e) {
-  console.warn('uploads router not mounted:', e.message);
-}
+// Mount known routers (these require files in your src/ directory)
+const mounts = [
+  { path: './src/routes/auth', mount: '/api/auth', desc: 'auth router' },
+  { path: './src/routes/comments', mount: '/api/comments', desc: 'comments router' },
+  { path: './src/routes/search', mount: '/api', desc: 'search router' },
+  { path: './src/routes/uploads', mount: '/api/uploads', desc: 'uploads router' },
+  { path: './src/routes/classSubjects', mount: '/api/classes', desc: 'classSubjects router' },
+  // drive-proxy may export a router or a register function; try mounting at /api (it should not call listen())
+  { path: './src/drive-proxy', mount: '/api', desc: 'drive-proxy' }
+];
 
-// mount classSubjects router
-try {
-  const classSubjectsRouter = require('./src/routes/classSubjects');
-  app.use('/api/classes', classSubjectsRouter);
-  mounted.push('/api/classes');
-} catch (e) {
-  console.warn('classSubjects router not mounted:', e.message);
-}
-
-// mount drive-proxy router
-try {
-  const driveProxyRouter = require('./src/drive-proxy');
-  app.use('/api', driveProxyRouter);
-  mounted.push('/api (drive)');
-} catch (e) {
-  console.warn('drive-proxy router not mounted:', e.message);
+for (const m of mounts) {
+  const ok = tryMount(m.path, m.mount, m.desc);
+  if (ok) mounted.push(ok);
 }
 
 console.log('Mounted routers:', mounted.length ? mounted.join(', ') : '(none)');
@@ -119,6 +131,7 @@ app.get('/api/info', (req, res) => {
   });
 });
 
+// If request path starts with /api and no route matched, return JSON 404
 app.use((req, res, next) => {
   if (req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: `No ${req.method} ${req.originalUrl}` });
@@ -126,6 +139,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve SPA index.html for non-API routes
 app.get('*', (req, res) => {
   if (req.originalUrl.startsWith('/api/')) return res.status(404).json({ ok: false, error: 'Not Found' });
   const indexPath = path.join(PUBLIC_DIR, 'index.html');
@@ -133,36 +147,43 @@ app.get('*', (req, res) => {
   return res.status(404).send('Not Found');
 });
 
+// Central error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
   if (res.headersSent) return next(err);
   res.status(err.status || 500).json({ ok: false, error: err.message || 'Internal Server Error' });
 });
 
+// Start server
 const port = parseInt(process.env.PORT, 10) || 5001;
 const server = app.listen(port, () => {
   console.log(`Server listening on port ${port} (pid=${process.pid})`);
 });
 
-function shutdown(signal) {
+// Graceful shutdown
+async function gracefulShutdown(signal) {
   console.log(`Received ${signal}, closing server...`);
-  server.close(async () => {
-    console.log('HTTP server closed.');
+  server.close(async (err) => {
+    if (err) console.error('Error closing server:', err);
+    else console.log('HTTP server closed.');
     try {
       const db = require('./src/db');
       if (db && db.pool && typeof db.pool.end === 'function') {
         await db.pool.end();
         console.log('PG pool ended.');
       }
-    } catch (e) { }
-    process.exit(0);
+    } catch (e) {
+      // ignore
+    }
+    process.exit(err ? 1 : 0);
   });
+  // Force after timeout
   setTimeout(() => {
     console.warn('Forcing shutdown.');
     process.exit(1);
   }, 10000).unref();
 }
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 module.exports = app;

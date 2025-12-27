@@ -7,6 +7,7 @@
    - loadUser() updates UI (hide/show status, login/register, logout, user-card)
    - doLogout() and logout button installers
 */
+console.log('public/main.js loaded — auth endpoints -> /api/auth/*');
 document.addEventListener('DOMContentLoaded', () => {
   // mapping lớp -> môn (source of truth)
   const classSubjects = {
@@ -250,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.textContent = msg;
       }
       try {
-        const res = await fetch('/api/login', {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
           credentials: 'include',
@@ -261,14 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if(ct.indexOf('application/json') !== -1){
           const json = await res.json();
           if(res.ok && (json.ok || json.token)){
-            // store token optionally
             try {
               const remember = !!inlineLoginForm.querySelector('input[name="remember"]:checked');
               if(json.token){ if(remember) localStorage.setItem('auth_token', json.token); else sessionStorage.setItem('auth_token', json.token); }
             } catch(e){}
-            // update UI
             await loadUser();
-            // hide inline form if present
             const inlineWrap = document.getElementById('inlineLogin');
             if(inlineWrap){ inlineWrap.classList.add('hidden'); inlineWrap.setAttribute('aria-hidden','true'); }
             return;
@@ -289,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- AUTH state handling + logout ---
   async function loadUser(){
     try {
-      const r = await fetch('/api/me', { credentials: 'include' });
+      const r = await fetch('/api/auth/me', { credentials: 'include' });
       let j = null;
       try { j = await r.json(); } catch(e){ j = null; }
       const logged = j && j.user ? j.user : null;

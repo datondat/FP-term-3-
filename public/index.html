@@ -231,86 +231,136 @@
 
   <!-- Inline auth JS (no extra files). This ensures update of logout buttons immediately after login/register -->
   <script>
+  /* Inline auth JS: modal login/register using real API (/api/auth/*)
+     Replace the previous inline auth code with this block.
+     This block performs real POST requests to /api/auth/login and /api/auth/register
+     using credentials:'include' so HttpOnly cookies (if set by server) are preserved.
+  */
   (function(){
     'use strict';
+
     // Helpers
     function $(s){ return document.querySelector(s); }
     function $all(s){ return Array.from(document.querySelectorAll(s)); }
+    function $id(id){ return document.getElementById(id); }
+    function createEl(tag, props = {}) {
+      const el = document.createElement(tag);
+      for (const k in props) {
+        if (k === 'textContent') el.textContent = props[k];
+        else el.setAttribute && el.setAttribute(k, props[k]);
+      }
+      return el;
+    }
+
+    async function apiPostJson(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      });
+      const ct = res.headers.get('content-type') || '';
+      let json = null;
+      if (ct.indexOf('application/json') !== -1) {
+        json = await res.json().catch(()=>null);
+      } else {
+        const txt = await res.text().catch(()=>null);
+        throw new Error(txt || `HTTP ${res.status}`);
+      }
+      if (!res.ok) {
+        const errMsg = (json && (json.error || json.message)) ? (json.error || json.message) : `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
+      return json;
+    }
+
     function createModal(mode){
       const overlay = document.createElement('div'); overlay.className = 'auth-overlay';
       const modal = document.createElement('div'); modal.className = 'auth-modal';
       const h = document.createElement('h3'); h.textContent = mode === 'login' ? 'Đăng nhập' : 'Đăng ký';
-      const desc = document.createElement('div'); desc.className = 'desc'; desc.textContent = mode === 'login' ? 'Đăng nhập để truy cập khu vực riêng.' : 'Tạo tài khoản mới (demo local).';
+      const desc = document.createElement('div'); desc.className = 'desc'; desc.textContent = mode === 'login' ? 'Đăng nhập để truy cập khu vực riêng.' : 'Tạo tài khoản mới.';
       const form = document.createElement('div'); form.className = 'auth-form';
-      // inputs
-      const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Email';
+
+      const email = document.createElement('input'); email.type = 'email'; email.placeholder = 'Email'; email.style.display = 'none';
       const username = document.createElement('input'); username.type = 'text'; username.placeholder = 'Tên tài khoản';
+      const displayName = document.createElement('input'); displayName.type = 'text'; displayName.placeholder = 'Tên hiển thị (tuỳ chọn)'; displayName.style.display = 'none';
       const password = document.createElement('input'); password.type = 'password'; password.placeholder = 'Mật khẩu';
-      const password2 = document.createElement('input'); password2.type = 'password'; password2.placeholder = 'Nhập lại mật khẩu';
-      if(mode === 'login'){
+      const password2 = document.createElement('input'); password2.type = 'password'; password2.placeholder = 'Nhập lại mật khẩu'; password2.style.display = 'none';
+
+      if (mode === 'login') {
         form.appendChild(username);
         form.appendChild(password);
       } else {
+        email.style.display = '';
+        displayName.style.display = '';
+        password2.style.display = '';
         form.appendChild(email);
+        form.appendChild(displayName);
         form.appendChild(username);
         form.appendChild(password);
         form.appendChild(password2);
       }
+
       const error = document.createElement('div'); error.className = 'auth-error'; error.style.display = 'none';
       const actions = document.createElement('div'); actions.className = 'auth-actions';
       const btnCancel = document.createElement('button'); btnCancel.className = 'btn auth-ghost'; btnCancel.type = 'button'; btnCancel.textContent = 'Hủy';
       const btnSubmit = document.createElement('button'); btnSubmit.className = 'btn auth-primary'; btnSubmit.type = 'button'; btnSubmit.textContent = mode === 'login' ? 'Đăng nhập' : 'Đăng ký';
       actions.appendChild(btnCancel); actions.appendChild(btnSubmit);
+
       const footer = document.createElement('div'); footer.className = 'auth-footer';
-      if(mode === 'login'){
-        footer.innerHTML = 'Bạn chưa có tài khoản? <span class="auth-link" data-switch="register">Đăng ký</span>';
-      } else {
-        footer.innerHTML = 'Đã có tài khoản? <span class="auth-link" data-switch="login">Đăng nhập</span>';
-      }
+      footer.innerHTML = mode === 'login' ? 'Bạn chưa có tài khoản? <span class="auth-link" data-switch="register">Đăng ký</span>' : 'Đã có tài khoản? <span class="auth-link" data-switch="login">Đăng nhập</span>';
+
       modal.appendChild(h); modal.appendChild(desc); modal.appendChild(form); modal.appendChild(error); modal.appendChild(actions); modal.appendChild(footer);
       overlay.appendChild(modal);
+      document.body.appendChild(overlay);
 
-      // behavior
       btnCancel.addEventListener('click', ()=> overlay.remove());
       overlay.addEventListener('click', (e)=> { if(e.target === overlay) overlay.remove(); });
       footer.querySelector('.auth-link').addEventListener('click', (e)=> {
         const to = e.target.dataset.switch;
         overlay.remove();
-        showAuthModal(to);
+        showAuthModal(to === 'register' ? 'register' : 'login');
       });
 
-      btnSubmit.addEventListener('click', ()=> {
+      async function showError(msg){
+        error.style.display = ''; error.textContent = String(msg || 'Lỗi');
+      }
+
+      btnSubmit.addEventListener('click', async ()=>{
         error.style.display = 'none'; error.textContent = '';
         try {
-          if(mode === 'login'){
-            const u = username.value.trim(), p = password.value;
-            if(!u || !p) throw new Error('Nhập tên tài khoản và mật khẩu');
-            const users = JSON.parse(localStorage.getItem('fp_users') || '{}');
-            const rec = users[u];
-            if(!rec) throw new Error('Tài khoản không tồn tại (demo)');
-            if(rec.password !== p) throw new Error('Sai mật khẩu (demo)');
-            // success
-            localStorage.setItem('fp_user', JSON.stringify({ username: u, email: rec.email || '' }));
-            updateAuthUI();
+          if (mode === 'login') {
+            const u = username.value.trim();
+            const p = password.value;
+            if (!u || !p) throw new Error('Vui lòng điền tên tài khoản và mật khẩu');
+            const json = await apiPostJson('/api/auth/login', { username: u, password: p });
+            try { if (json.token) { sessionStorage.setItem('auth_token', json.token); } } catch(e){}
+            if (window.loadUser) await window.loadUser();
             overlay.remove();
+            return;
           } else {
-            const e = email.value.trim(), u = username.value.trim(), p = password.value, p2 = password2.value;
-            if(!e || !u || !p) throw new Error('Vui lòng điền đầy đủ thông tin');
-            if(p !== p2) throw new Error('Mật khẩu xác nhận không khớp');
-            const users = JSON.parse(localStorage.getItem('fp_users') || '{}');
-            if(users[u]) throw new Error('Tên tài khoản đã tồn tại (demo)');
-            users[u] = { email: e, password: p };
-            localStorage.setItem('fp_users', JSON.stringify(users));
-            localStorage.setItem('fp_user', JSON.stringify({ username: u, email: e }));
-            updateAuthUI();
+            const e = email.value.trim();
+            const u = username.value.trim();
+            const dn = displayName.value.trim();
+            const p = password.value;
+            const p2 = password2.value;
+            if (!u || !p) throw new Error('Vui lòng điền tên tài khoản và mật khẩu');
+            if (p.length < 6) throw new Error('Mật khẩu cần ít nhất 6 ký tự');
+            if (p !== p2) throw new Error('Mật khẩu xác nhận không khớp');
+            const body = { username: u, password: p };
+            if (dn) body.display_name = dn;
+            const json = await apiPostJson('/api/auth/register', body);
+            try { if (json.token) { sessionStorage.setItem('auth_token', json.token); } } catch(e){}
+            if (window.loadUser) await window.loadUser();
             overlay.remove();
+            return;
           }
-        } catch(err) {
-          error.style.display = ''; error.textContent = String(err.message || err);
+        } catch (err) {
+          console.error('auth modal error', err);
+          showError(err && err.message ? err.message : String(err));
         }
       });
 
-      document.body.appendChild(overlay);
       setTimeout(()=> {
         const first = modal.querySelector('input');
         if(first) first.focus();
@@ -319,89 +369,29 @@
 
     function showAuthModal(mode){ createModal(mode === 'register' ? 'register' : 'login'); }
 
-    function updateAuthUI(){
-      const userRaw = localStorage.getItem('fp_user');
-      const user = userRaw ? JSON.parse(userRaw) : null;
-      const linkLogin = $('#link-login');
-      const linkRegister = $('#link-register');
-      const logoutBtns = $all('.btn-logout');
-      const userInfo = $('#user-info');
-      const userCard = $('#user-card');
-
-      if(user){
-        if(linkLogin) linkLogin.style.display = 'none';
-        if(linkRegister) linkRegister.style.display = 'none';
-        logoutBtns.forEach(b=> b.style.display = '');
-        if(userInfo) userInfo.textContent = (user.username || user.email || 'Người dùng');
-        if(userCard) userCard.classList.remove('hidden');
-      } else {
-        if(linkLogin) linkLogin.style.display = '';
-        if(linkRegister) linkRegister.style.display = '';
-        logoutBtns.forEach(b=> b.style.display = 'none');
-        if(userCard) userCard.classList.add('hidden');
-      }
-    }
-
-    function doLogout(){
-      localStorage.removeItem('fp_user');
-      updateAuthUI();
-    }
-
-    // intercept clicks on the header links
+    // Intercept header links / register links and show modal (instead of demo localStorage modal)
     document.addEventListener('click', function(e){
       const t = e.target;
-      if(t.matches && t.matches('#link-login')){
+      if(!t) return;
+      if(t.matches && (t.matches('#link-login') || t.matches('#btn-login-header') || t.matches('.open-login-modal'))){
         e.preventDefault();
         showAuthModal('login');
         return;
       }
-      if(t.matches && t.matches('#link-register')){
+      if(t.matches && (t.matches('#link-register') || t.matches('#btn-register-header') || t.matches('.open-register-modal'))){
         e.preventDefault();
         showAuthModal('register');
         return;
       }
       if(t.closest && t.closest('.btn-logout')){
-        e.preventDefault();
-        doLogout();
+        // allow existing logout handlers to run (they call doLogout)
         return;
       }
     }, false);
 
-    document.addEventListener('DOMContentLoaded', function(){
-      updateAuthUI();
-      // ensure header logout and main logout have same visibility
-      // in case there are multiple logout elements we already toggle via class .btn-logout
-      
-      // Load and save Drive configuration
-      const rootIdInput = document.getElementById('ROOT_ID');
-      const saveDriveBtn = document.getElementById('saveDriveConfig');
-      const driveStatus = document.getElementById('driveConfigStatus');
-      
-      // Load saved ROOT_ID from localStorage
-      if(rootIdInput){
-        const savedRootId = localStorage.getItem('fp_drive_root_id');
-        if(savedRootId){
-          rootIdInput.value = savedRootId;
-          if(driveStatus) driveStatus.innerHTML = '<span style="color:green">✓ Đã cấu hình Drive</span>';
-        }
-      }
-      
-      // Save ROOT_ID to localStorage
-      if(saveDriveBtn){
-        saveDriveBtn.addEventListener('click', function(){
-          const rootId = rootIdInput.value.trim();
-          if(!rootId){
-            if(driveStatus) driveStatus.innerHTML = '<span style="color:red">✗ Vui lòng nhập Drive Folder ID</span>';
-            return;
-          }
-          localStorage.setItem('fp_drive_root_id', rootId);
-          if(driveStatus) driveStatus.innerHTML = '<span style="color:green">✓ Đã lưu cấu hình Drive</span>';
-          setTimeout(() => {
-            if(driveStatus) driveStatus.innerHTML = '';
-          }, 3000);
-        });
-      }
-    });
+    // Expose for other scripts
+    window.showAuthModal = showAuthModal;
+
   })();
   </script>
 
