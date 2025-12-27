@@ -160,6 +160,20 @@
     // 1) try to fetch Drive files (best-effort). If it fails, still show books links.
     const rootIdEl = document.getElementById('ROOT_ID');
     const rootId = rootIdEl && rootIdEl.value ? rootIdEl.value.trim() : '';
+    
+    // Add "View in Drive Viewer" button if Drive is configured
+    if(rootId){
+      const driveViewerBtn = document.createElement('button');
+      driveViewerBtn.className = 'btn';
+      driveViewerBtn.style.marginBottom = '12px';
+      driveViewerBtn.innerHTML = '<i class="fa fa-folder-open"></i> Xem trong Drive Viewer';
+      driveViewerBtn.addEventListener('click', () => {
+        const url = `/drive-reader.html?root=${encodeURIComponent(rootId)}&class=${encodeURIComponent(grade)}&subject=${encodeURIComponent(subject)}`;
+        window.open(url, '_blank');
+      });
+      detailBooks.appendChild(driveViewerBtn);
+    }
+    
     fetchFilesForDrive(rootId, grade, subject).then(json => {
       if(json && Array.isArray(json.files) && json.files.length){
         const filesNode = renderDriveFiles(json.files);

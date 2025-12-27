@@ -126,10 +126,21 @@
     </section>
 
     <section class="card" style="margin-top:16px">
+      <h3>Cấu hình Google Drive</h3>
+      <p class="small muted">Nhập ID thư mục gốc của Google Drive để xem tài liệu.</p>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <input type="text" id="ROOT_ID" placeholder="Drive Folder ID" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px" />
+        <button id="saveDriveConfig" class="btn" style="white-space:nowrap">Lưu cấu hình</button>
+      </div>
+      <div id="driveConfigStatus" style="margin-top:8px;font-size:14px"></div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
       <h3>Ghi chú</h3>
       <ul>
         <li>Nhấn vào tên môn → danh sách sách giáo khoa / sách bài tập sẽ hiện ở khung chi tiết.</li>
         <li>Link mở trang sách (hoc10.vn) trong tab mới.</li>
+        <li>Cấu hình Google Drive để xem tài liệu từ Drive (cần GOOGLE_API_KEY trong .env).</li>
       </ul>
     </section>
 
@@ -360,6 +371,36 @@
       updateAuthUI();
       // ensure header logout and main logout have same visibility
       // in case there are multiple logout elements we already toggle via class .btn-logout
+      
+      // Load and save Drive configuration
+      const rootIdInput = document.getElementById('ROOT_ID');
+      const saveDriveBtn = document.getElementById('saveDriveConfig');
+      const driveStatus = document.getElementById('driveConfigStatus');
+      
+      // Load saved ROOT_ID from localStorage
+      if(rootIdInput){
+        const savedRootId = localStorage.getItem('fp_drive_root_id');
+        if(savedRootId){
+          rootIdInput.value = savedRootId;
+          if(driveStatus) driveStatus.innerHTML = '<span style="color:green">✓ Đã cấu hình Drive</span>';
+        }
+      }
+      
+      // Save ROOT_ID to localStorage
+      if(saveDriveBtn){
+        saveDriveBtn.addEventListener('click', function(){
+          const rootId = rootIdInput.value.trim();
+          if(!rootId){
+            if(driveStatus) driveStatus.innerHTML = '<span style="color:red">✗ Vui lòng nhập Drive Folder ID</span>';
+            return;
+          }
+          localStorage.setItem('fp_drive_root_id', rootId);
+          if(driveStatus) driveStatus.innerHTML = '<span style="color:green">✓ Đã lưu cấu hình Drive</span>';
+          setTimeout(() => {
+            if(driveStatus) driveStatus.innerHTML = '';
+          }, 3000);
+        });
+      }
     });
   })();
   </script>

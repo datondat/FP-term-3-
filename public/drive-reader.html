@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <title>Drive Viewer — FP-term-3</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="main.css">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Inter', Arial, sans-serif; }
+    .drive-viewer-header {
+      background: #2d7cff;
+      color: white;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drive-viewer-header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .drive-viewer-header .back-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .drive-viewer-header .back-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    .split-container {
+      display: flex;
+      height: calc(100vh - 200px);
+      border-top: 1px solid #e0e0e0;
+    }
+    .drive-panel {
+      flex: 1;
+      border-right: 1px solid #e0e0e0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .toc-panel {
+      width: 350px;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f9f9f9;
+    }
+    .drive-panel iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .toc-panel h3 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #333;
+      border-bottom: 2px solid #2d7cff;
+      padding-bottom: 8px;
+    }
+    .toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .toc-item {
+      padding: 10px 12px;
+      margin: 6px 0;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    .toc-item:hover {
+      background: #e8f0ff;
+      border-left-color: #2d7cff;
+    }
+    .toc-item.active {
+      background: #e8f0ff;
+      border-left-color: #2d7cff;
+      font-weight: 600;
+    }
+    .toc-item-title {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .toc-item-meta {
+      font-size: 12px;
+      color: #666;
+    }
+    .comments-section {
+      border-top: 2px solid #e0e0e0;
+      padding: 20px;
+      background: #fff;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .comments-section h3 {
+      margin-top: 0;
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 16px;
+    }
+    .comment-form {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 8px;
+    }
+    .comment-form input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .comment-form button {
+      padding: 10px 20px;
+      background: #2d7cff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .comment-form button:hover {
+      background: #1a66e0;
+    }
+    .comment-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .comment-item {
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #f9f9f9;
+      border-radius: 6px;
+      border-left: 3px solid #2d7cff;
+    }
+    .comment-author {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .comment-text {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .comment-time {
+      font-size: 12px;
+      color: #999;
+      margin-top: 6px;
+    }
+    .loading {
+      padding: 40px;
+      text-align: center;
+      color: #666;
+    }
+    .error {
+      padding: 40px;
+      text-align: center;
+      color: #d32f2f;
+    }
+    @media (max-width: 768px) {
+      .split-container {
+        flex-direction: column;
+        height: auto;
+      }
+      .drive-panel {
+        height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+      }
+      .toc-panel {
+        width: 100%;
+        max-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="drive-viewer-header">
+    <h1 id="pageTitle">Drive Viewer</h1>
+    <a href="javascript:history.back()" class="back-btn"><i class="fa fa-arrow-left"></i> Quay lại</a>
+  </div>
+
+  <div class="split-container">
+    <div class="drive-panel">
+      <div id="driveContent" class="loading">
+        Đang tải tài liệu...
+      </div>
+    </div>
+    <div class="toc-panel">
+      <h3><i class="fa fa-list"></i> Mục lục</h3>
+      <ul id="tocList" class="toc-list">
+        <li class="loading">Đang tải danh sách...</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="comments-section">
+    <h3><i class="fa fa-comments"></i> Bình luận</h3>
+    <div class="comment-form">
+      <input type="text" id="commentInput" placeholder="Nhập bình luận của bạn..." />
+      <button id="submitComment"><i class="fa fa-paper-plane"></i> Gửi</button>
+    </div>
+    <ul id="commentList" class="comment-list">
+      <li class="comment-item">
+        <div class="comment-author">Người dùng mẫu</div>
+        <div class="comment-text">Đây là một bình luận mẫu. Bạn có thể thêm bình luận của mình bên dưới.</div>
+        <div class="comment-time">Vừa xong</div>
+      </li>
+    </ul>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // Parse URL parameters
+      const params = new URLSearchParams(window.location.search);
+      const root = params.get('root') || '';
+      const klass = params.get('class') || '';
+      const subject = params.get('subject') || '';
+      const fileId = params.get('file') || '';
+
+      // Update page title
+      const pageTitle = document.getElementById('pageTitle');
+      if (subject && klass) {
+        pageTitle.textContent = `${subject} - Lớp ${klass}`;
+      } else if (subject) {
+        pageTitle.textContent = subject;
+      }
+
+      // Load file list for table of contents
+      async function loadTOC() {
+        if (!root) {
+          document.getElementById('tocList').innerHTML = '<li class="error">Thiếu thông tin root folder</li>';
+          return;
+        }
+
+        try {
+          const url = `/api/drive-files?root=${encodeURIComponent(root)}&class=${encodeURIComponent(klass)}&subject=${encodeURIComponent(subject)}`;
+          const response = await fetch(url, { credentials: 'include' });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          const files = data.files || [];
+
+          const tocList = document.getElementById('tocList');
+          tocList.innerHTML = '';
+
+          if (files.length === 0) {
+            tocList.innerHTML = '<li class="toc-item">Không có tài liệu nào</li>';
+            return;
+          }
+
+          files.forEach((file, index) => {
+            const li = document.createElement('li');
+            li.className = 'toc-item';
+            if (file.id === fileId) {
+              li.classList.add('active');
+            }
+            
+            li.innerHTML = `
+              <div class="toc-item-title"><i class="fa fa-file-alt"></i> ${escapeHtml(file.name)}</div>
+              <div class="toc-item-meta">${escapeHtml(file.mimeType || '')}</div>
+            `;
+            
+            li.addEventListener('click', () => {
+              loadFile(file);
+              document.querySelectorAll('.toc-item').forEach(item => item.classList.remove('active'));
+              li.classList.add('active');
+            });
+            
+            tocList.appendChild(li);
+          });
+
+          // Auto-load the first file if no file is specified
+          if (!fileId && files.length > 0) {
+            loadFile(files[0]);
+            tocList.firstChild.classList.add('active');
+          } else if (fileId) {
+            const currentFile = files.find(f => f.id === fileId);
+            if (currentFile) {
+              loadFile(currentFile);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading TOC:', error);
+          document.getElementById('tocList').innerHTML = `<li class="error">Lỗi: ${escapeHtml(error.message)}</li>`;
+        }
+      }
+
+      // Load and display a file
+      function loadFile(file) {
+        const driveContent = document.getElementById('driveContent');
+        const viewUrl = file.webViewLink || file.previewUrl || `https://drive.google.com/file/d/${file.id}/view`;
+        
+        // Create iframe to display the file
+        driveContent.innerHTML = `<iframe src="${escapeHtml(viewUrl)}" allow="autoplay"></iframe>`;
+        
+        // Update URL without reloading
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('file', file.id);
+        window.history.replaceState({}, '', newUrl);
+      }
+
+      // Comments functionality
+      const commentInput = document.getElementById('commentInput');
+      const submitComment = document.getElementById('submitComment');
+      const commentList = document.getElementById('commentList');
+
+      // Load comments from localStorage
+      function loadComments() {
+        const storageKey = `comments_${root}_${klass}_${subject}`;
+        const stored = localStorage.getItem(storageKey);
+        
+        if (stored) {
+          try {
+            const comments = JSON.parse(stored);
+            commentList.innerHTML = '';
+            comments.forEach(comment => {
+              addCommentToDOM(comment);
+            });
+          } catch (e) {
+            console.error('Error loading comments:', e);
+          }
+        }
+      }
+
+      // Save comments to localStorage
+      function saveComments() {
+        const storageKey = `comments_${root}_${klass}_${subject}`;
+        const comments = [];
+        
+        commentList.querySelectorAll('.comment-item').forEach(item => {
+          const author = item.querySelector('.comment-author').textContent;
+          const text = item.querySelector('.comment-text').textContent;
+          const time = item.querySelector('.comment-time').textContent;
+          comments.push({ author, text, time });
+        });
+        
+        localStorage.setItem(storageKey, JSON.stringify(comments));
+      }
+
+      // Add comment to DOM
+      function addCommentToDOM(comment) {
+        const li = document.createElement('li');
+        li.className = 'comment-item';
+        li.innerHTML = `
+          <div class="comment-author">${escapeHtml(comment.author)}</div>
+          <div class="comment-text">${escapeHtml(comment.text)}</div>
+          <div class="comment-time">${escapeHtml(comment.time)}</div>
+        `;
+        commentList.appendChild(li);
+      }
+
+      // Submit comment
+      submitComment.addEventListener('click', () => {
+        const text = commentInput.value.trim();
+        if (!text) return;
+
+        // Get user info from localStorage or use default
+        const userStr = localStorage.getItem('fp_user');
+        let author = 'Người dùng';
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            author = user.username || user.email || 'Người dùng';
+          } catch (e) {}
+        }
+
+        const comment = {
+          author: author,
+          text: text,
+          time: new Date().toLocaleString('vi-VN')
+        };
+
+        addCommentToDOM(comment);
+        saveComments();
+        commentInput.value = '';
+      });
+
+      // Allow Enter key to submit
+      commentInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          submitComment.click();
+        }
+      });
+
+      // Utility function
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Initialize
+      loadTOC();
+      loadComments();
+    })();
+  </script>
+</body>
+</html>
