@@ -335,8 +335,8 @@
   function clearAuthStateClientSide(){
     try{
       ['auth_token','auth_user','token','user','fp_token','fp_user'].forEach(k=>{
-        try{ localStorage.removeItem(k); }catch(){}
-        try{ sessionStorage.removeItem(k); }catch(){}
+        try{ localStorage.removeItem(k); }catch(e){}
+        try{ sessionStorage.removeItem(k); }catch(e){}
       });
     }catch(e){ console.warn(e); }
   }
