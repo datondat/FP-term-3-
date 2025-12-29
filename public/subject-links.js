@@ -1,26 +1,25 @@
 // public/subject-links.js
-// Fully integrated: static hoc10.vn mapping + Drive lookup.
-// - Tries server-side convenience endpoint /api/drive/search?grade=...&subject=...
-// - If search not available/fails, falls back to folderId flow:
-//     /api/drive/folders (root) -> /api/drive/folders?parentId=... -> /api/drive/files?folderId=...
-// - Configure API base (port/host) via window.API_BASE, e.g. window.API_BASE = 'http://localhost:5001'
-// - Timeout: 12s
-// - Fixed: added escapeHtml and normalizeName to avoid ReferenceError
+// Đầy đủ: giữ nguyên toàn bộ mapping hoc10.vn cho các lớp 6..12
+// Kết hợp: hiển thị static links + cố gắng tìm file trên Drive (server-side /api/drive/search, fallback folders/files)
+// Cấu hình:
+// - Nếu backend chạy trên host/port khác: trước khi include file này, set window.API_BASE = 'http://host:port'
+// - Nếu muốn mapping grade->Drive folder server-side: set env DRIVE_GRADE_FOLDERS_JSON hoặc window.DRIVE_GRADE_FOLDERS client-side
 
 (function () {
-  // ----------------------------
-  // API base helper
-  // ----------------------------
+  /* ========================
+     API base helper
+     ======================== */
   const API_BASE = (window.API_BASE === undefined) ? '' : (window.API_BASE || '');
   function apiUrl(path) {
-    if (!path || path[0] !== '/') path = '/' + (path || '');
+    if (!path) path = '/';
+    if (path[0] !== '/') path = '/' + path;
     if (!API_BASE) return path;
     return API_BASE.replace(/\/$/, '') + path;
   }
 
-  // ----------------------------
-  // Helpers (added escapeHtml + normalizeName)
-  // ----------------------------
+  /* ========================
+     Helpers
+     ======================== */
   function escapeHtml(s) {
     if (s === undefined || s === null) return '';
     return String(s).replace(/[&<>"']/g, function (m) {
@@ -35,8 +34,6 @@
       return String(s).toLowerCase().trim();
     }
   }
-
-  // fetch with timeout helper
   async function fetchWithTimeout(url, opts = {}, timeout = 12000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -52,8 +49,8 @@
   async function apiGetJson(url) {
     const res = await fetchWithTimeout(url, {}, 12000);
     if (!res.ok) {
-      const text = await res.text().catch(() => null);
-      const err = new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
+      const text = await res.text().catch(()=>null);
+      const err = new Error(`${res.status} ${res.statusText}${text?': '+text:''}`);
       err._status = res.status;
       err._body = text;
       throw err;
@@ -61,9 +58,10 @@
     return res.json();
   }
 
-  // ----------------------------
-  // Static mapping (hoc10.vn)
-  // ----------------------------
+  /* ========================
+     FULL subject mapping (hoc10.vn)
+     KEEP FULL - DO NOT TRIM
+     ======================== */
   const SUBJECT_LINKS = {
     6: {
       'Ngữ văn': [
@@ -228,11 +226,11 @@
     }
   };
 
-  // ----------------------------
-  // Drive folder helpers (fallback flow)
-  // ----------------------------
+  /* ========================
+     Drive helpers (fallback)
+     ======================== */
   const DRIVE_CACHE = { rootFolders: null, subfoldersByParent: new Map() };
-  function clearDriveCache(){ DRIVE_CACHE.rootFolders = null; DRIVE_CACHE.subfoldersByParent.clear(); }
+  function clearDriveCache() { DRIVE_CACHE.rootFolders = null; DRIVE_CACHE.subfoldersByParent.clear(); }
 
   async function resolveGradeFolderIdViaFolders(grade) {
     if (!DRIVE_CACHE.rootFolders) {
@@ -276,9 +274,9 @@
     return resp.files || [];
   }
 
-  // ----------------------------
-  // UI helpers
-  // ----------------------------
+  /* ========================
+     UI: subjects and inline details
+     ======================== */
   function createSubjectItem(name, grade) {
     const li = document.createElement('li');
     const a = document.createElement('a');
@@ -330,9 +328,6 @@
     }
   }
 
-  // ----------------------------
-  // Main: show inline detail (static links + drive)
-  // ----------------------------
   async function showSubjectDetailInline(name, grade, triggerElement) {
     const panel = triggerElement.closest('.grade-panel');
     if (!panel) return;
@@ -356,9 +351,9 @@
 
     panel.appendChild(detail);
 
-    // static links
+    // static hoc10 links
     const staticWrap = detail.querySelector('.static-links');
-    const staticLinks = ((SUBJECT_LINKS && SUBJECT_LINKS[grade]) ? SUBJECT_LINKS[grade][name] : null) || [];
+    const staticLinks = (SUBJECT_LINKS && SUBJECT_LINKS[grade] && SUBJECT_LINKS[grade][name]) || [];
     if (staticLinks.length) {
       staticLinks.forEach(it => {
         const a = document.createElement('a');
@@ -373,19 +368,24 @@
       staticWrap.innerHTML = '<div class="muted">Không có liên kết hoc10.vn cho môn này.</div>';
     }
 
+    // Drive flow: try server-side search first, then fallback
     const driveWrap = detail.querySelector('.drive-links');
 
-    // First: try server-side convenience search endpoint
+    // Try server-side convenience endpoint
     try {
       driveWrap.innerHTML = '<div class="muted">Tìm file (server-side search)...</div>';
       const searchUrl = apiUrl('/api/drive/search') + `?grade=${encodeURIComponent(grade)}&subject=${encodeURIComponent(name)}`;
-      const sj = await fetchWithTimeout(searchUrl, {}, 12000).catch(e => { throw e; });
-      if (sj.ok) {
-        const sjjson = await sj.json().catch(()=>null);
-        if (sjjson && sjjson.ok && Array.isArray(sjjson.files) && sjjson.files.length) {
+      const resp = await fetchWithTimeout(searchUrl, {}, 12000).catch(e => { throw e; });
+      if (resp.ok) {
+        const json = await resp.json().catch(()=>null);
+        if (json && json.ok && Array.isArray(json.files)) {
+          if (json.files.length === 0) {
+            driveWrap.innerHTML = '<div class="muted">Server-side: folder tìm thấy nhưng chưa có file.</div>';
+            return;
+          }
           driveWrap.innerHTML = '<div style="margin-bottom:6px;"><strong>File từ Drive:</strong></div>';
           const fw = document.createElement('div');
-          sjjson.files.forEach(f => {
+          json.files.forEach(f => {
             const btn = document.createElement('a');
             btn.className = 'btn-ghost';
             btn.style.display = 'inline-block';
@@ -397,34 +397,29 @@
             fw.appendChild(btn);
           });
           driveWrap.appendChild(fw);
-          return; // success via search endpoint
-        } else if (sjjson && sjjson.ok && Array.isArray(sjjson.files) && sjjson.files.length === 0) {
-          driveWrap.innerHTML = '<div class="muted">Server-side: folder found nhưng chưa có file.</div>';
           return;
         }
       }
     } catch (e) {
-      console.warn('Search endpoint failed, falling back to folder flow:', e);
+      console.warn('Search endpoint failed; falling back to folder flow:', e);
     }
 
-    // Fallback: resolve via folder flow
+    // Fallback folder flow
     try {
       driveWrap.innerHTML = '<div class="muted">Tìm folder khối lớp trên Drive...</div>';
       const gradeFolderId = await resolveGradeFolderIdViaFolders(grade);
       if (!gradeFolderId) {
-        driveWrap.innerHTML = '<div class="muted">Không xác định được folder khối lớp trên Drive. Vui lòng cấu hình window.DRIVE_GRADE_FOLDERS (client) hoặc mapping server-side.</div>';
+        driveWrap.innerHTML = '<div class="muted">Không xác định được folder khối lớp trên Drive. Vui lòng cấu hình DRIVE_GRADE_FOLDERS_JSON hoặc window.DRIVE_GRADE_FOLDERS.</div>';
         return;
       }
 
       driveWrap.innerHTML = '<div class="muted">Tìm folder môn trong khối lớp...</div>';
       const subjectFolder = await resolveSubjectFolderUnderGradeViaFolders(gradeFolderId, name);
       if (!subjectFolder) {
-        driveWrap.innerHTML = '<div class="muted">Không tìm thấy folder môn tương ứng trong khối lớp. Dưới đây là danh sách folder con:</div>';
+        driveWrap.innerHTML = '<div class="muted">Không tìm thấy folder môn tương ứng trong khối lớp. Dưới đây là folder con:</div>';
         const list = document.createElement('div'); list.style.marginTop='8px';
         const subs = await listSubfolders(gradeFolderId);
-        (subs || []).forEach(sf => {
-          const el = document.createElement('div'); el.className='muted'; el.textContent = `${sf.name} (id: ${sf.id})`; list.appendChild(el);
-        });
+        (subs || []).forEach(sf => { const el=document.createElement('div'); el.className='muted'; el.textContent=`${sf.name} (id: ${sf.id})`; list.appendChild(el); });
         driveWrap.appendChild(list);
         return;
       }
@@ -456,9 +451,9 @@
     }
   }
 
-  // ----------------------------
-  // Init subjects + search box
-  // ----------------------------
+  /* ========================
+     Init
+     ======================== */
   function initSubjects() {
     populateSubjects();
     const gs = document.getElementById('global-search');
@@ -483,10 +478,12 @@
     initSubjects();
   }
 
-  // exports for debug
+  /* ========================
+     Expose for debug
+     ======================== */
   window.FP = window.FP || {};
+  window.FP.subjectLinks = SUBJECT_LINKS;
   window.FP.clearDriveCache = clearDriveCache;
   window.FP.apiBase = API_BASE;
-  window.FP.subjectLinks = SUBJECT_LINKS;
 
 })();

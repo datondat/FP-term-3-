@@ -5,28 +5,19 @@ const fs = require('fs');
 
 const router = express.Router();
 
-/*
-  Routes are relative (no leading /api). Mount this router under '/api' in your entry (src/index.js)
-  Endpoints:
-    GET  /api/drive/folders?parentId=...
-    GET  /api/drive/files?folderId=...
-    GET  /api/drive/file/:id
-    GET  /api/drive/search?grade=6&subject=Toán
-*/
-
-const KEY_PATH = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || path.join(__dirname, 'service-account.json');
+// Accept either GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_APPLICATION_CREDENTIALS
+const KEY_PATH = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, 'service-account.json');
 const DRIVE_FOLDER_ID = process.env.DRIVE_FOLDER_ID || ''; // optional root folder id
 const PAGE_SIZE_DEFAULT = 50;
 const API_KEY = process.env.GOOGLE_API_KEY || ''; // fallback for public files
 
-// prepare auth if service account key exists
 let authClient = null;
 if (fs.existsSync(KEY_PATH)) {
   authClient = new google.auth.GoogleAuth({
     keyFile: KEY_PATH,
     scopes: ['https://www.googleapis.com/auth/drive.readonly']
   });
-  console.info('[drive] Service account key found. Using service account for Drive API.');
+  console.info('[drive] Service account key found. Using service account for Drive API at', KEY_PATH);
 } else {
   if (API_KEY) {
     console.info('[drive] No service account key found. Using API key fallback for public Drive access.');
@@ -44,7 +35,7 @@ async function driveFilesList(params = {}) {
   } else if (API_KEY) {
     return drive.files.list(Object.assign({}, params, { key: API_KEY }));
   } else {
-    throw new Error('No auth available for Drive API (set GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_API_KEY)');
+    throw new Error('No auth available for Drive API (set GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_API_KEY)');
   }
 }
 
@@ -55,7 +46,7 @@ async function driveFilesGet(params = {}, requestOptions = {}) {
   } else if (API_KEY) {
     return drive.files.get(Object.assign({}, params, { key: API_KEY }), requestOptions);
   } else {
-    throw new Error('No auth available for Drive API (set GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_API_KEY)');
+    throw new Error('No auth available for Drive API (set GOOGLE_SERVICE_ACCOUNT_KEY_PATH or GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_API_KEY)');
   }
 }
 
@@ -82,7 +73,8 @@ router.get('/drive/folders', async (req, res) => {
 });
 
 /* GET /drive/files?folderId=<id>&pageSize=&pageToken=
-   Lists non-folder files inside folderId. */
+   Lists non-folder files inside folderId.
+*/
 router.get('/drive/files', async (req, res) => {
   try {
     const folderId = req.query.folderId;
@@ -139,7 +131,8 @@ router.get('/drive/file/:id', async (req, res) => {
 });
 
 /* GET /drive/search?grade=6&subject=Toán
-   Convenience endpoint: resolve grade folder -> subject folder -> list files */
+   Convenience endpoint: resolve grade folder -> subject folder -> list files
+*/
 router.get('/drive/search', async (req, res) => {
   try {
     const grade = req.query.grade;
