@@ -2,10 +2,70 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Chuyển hướng…</title>
-  <meta http-equiv="refresh" content="0;url=/login.html#register">
+  <title>Đăng ký — FP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="main.css">
+  <style>
+    .auth-form { max-width:420px; margin:40px auto; padding:18px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .auth-form input { width:100%; padding:8px; margin-bottom:10px; border:1px solid var(--border); border-radius:6px; }
+    .error { color:#b22222; margin-bottom:8px; }
+  </style>
 </head>
 <body>
-  Nếu trình duyệt không tự chuyển hướng, <a href="/login.html#register">bấm vào đây</a>.
+  <main class="container">
+    <div class="auth-form">
+      <h2>Đăng ký</h2>
+      <div id="error" class="error" style="display:none;"></div>
+      <label>Username</label>
+      <input id="username" type="text" autocomplete="username" />
+      <label>Tên hiển thị</label>
+      <input id="display_name" type="text" />
+      <label>Password</label>
+      <input id="password" type="password" autocomplete="new-password" />
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button id="btn-register" class="btn">Đăng ký</button>
+        <a href="/" class="btn-ghost">Hủy</a>
+      </div>
+      <p style="margin-top:12px;">Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('btn-register').addEventListener('click', async function (e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const display_name = document.getElementById('display_name').value.trim();
+      const errEl = document.getElementById('error');
+      errEl.style.display = 'none'; errEl.textContent = '';
+      if (!username || !password) { errEl.textContent = 'Nhập username và password.'; errEl.style.display = ''; return; }
+
+      try {
+        const r = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, display_name })
+        });
+        const j = await r.json();
+        if (!r.ok) {
+          errEl.textContent = j.error || 'Đăng ký thất bại';
+          errEl.style.display = '';
+          return;
+        }
+        if (j.token) {
+          localStorage.setItem('fp_token', j.token);
+          if (j.user) localStorage.setItem('fp_user', JSON.stringify(j.user));
+          window.location.href = '/';
+        } else {
+          errEl.textContent = 'Không nhận được token từ server';
+          errEl.style.display = '';
+        }
+      } catch (err) {
+        errEl.textContent = 'Lỗi khi kết nối server';
+        errEl.style.display = '';
+        console.error(err);
+      }
+    });
+  </script>
 </body>
 </html>

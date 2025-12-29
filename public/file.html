@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>FP — Tài liệu</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="branding">
+        <a href="/" class="logo">FP</a>
+        <div class="site-sub">Hệ thống học tập</div>
+      </div>
+      <nav class="site-nav" id="nav">
+        <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
+        <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div id="file-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h2 id="file-title" style="margin:0">Tài liệu</h2>
+          <div id="file-meta" class="muted" style="font-size:13px"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <a id="raw-link" class="btn" target="_blank" rel="noopener">Mở tài liệu</a>
+          <a id="download-link" class="btn-ghost" rel="noopener" download>Tải về</a>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="muted" style="padding:18px;border-radius:8px;border:1px solid var(--border);">
+          Click "Mở tài liệu" để xem tài liệu trên trang mới (stream từ Drive qua server).<br>
+          Nếu muốn tải về, click "Tải về".
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <h3>Bình luận</h3>
+      <div id="comments-list" style="margin-bottom:12px; max-height:320px; overflow:auto;"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+        <input id="comment-author" placeholder="Tên (tuỳ chọn)" style="padding:8px;border:1px solid var(--border);border-radius:6px;">
+        <textarea id="comment-text" placeholder="Viết bình luận..." rows="4" style="padding:8px;border:1px solid var(--border);border-radius:6px;"></textarea>
+        <div style="display:flex;gap:8px;">
+          <button id="comment-post" class="btn">Gửi bình luận</button>
+          <button id="comment-clear" class="btn-ghost">Xoá</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© FP — Hệ thống học tập</small>
+    </div>
+  </footer>
+
+  <script src="file-viewer.js"></script>
+</body>
+</html>

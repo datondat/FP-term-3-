@@ -17,6 +17,8 @@
     .helper { margin-top:12px; font-size:0.95rem; color:var(--muted,#6c757d); }
     .link-btn { background:none; border:0; color:var(--primary,#d17a23); cursor:pointer; font-weight:700; padding:0; }
     .auth-footer { margin-top:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .ok { color: #0a8a0a; }
+    .err { color: #b22222; }
     @media (max-width:860px) {
       .auth-wrap { grid-template-columns:1fr; }
     }
@@ -130,7 +132,9 @@
         });
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || 'Lỗi đăng nhập');
-        localStorage.setItem('token', j.token);
+        // store token under the same key used by client auth code
+        localStorage.setItem('fp_token', j.token);
+        if (j.user) localStorage.setItem('fp_user', JSON.stringify(j.user));
         show('login-msg','Đăng nhập thành công. Đang chuyển hướng...');
         setTimeout(() => location.href = '/', 600);
       } catch (err) {
@@ -152,7 +156,9 @@
         });
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || 'Lỗi đăng ký');
-        localStorage.setItem('token', j.token);
+        // store token under the same key used by client auth code
+        localStorage.setItem('fp_token', j.token);
+        if (j.user) localStorage.setItem('fp_user', JSON.stringify(j.user));
         show('reg-msg','Đăng ký thành công. Đang chuyển hướng...');
         setTimeout(() => location.href = '/', 700);
       } catch (err) {
@@ -162,7 +168,7 @@
 
     // If token exists, try to fetch profile and redirect to /
     (async function autoRedirect() {
-      const t = localStorage.getItem('token');
+      const t = localStorage.getItem('fp_token');
       if (!t) return;
       try {
         const r = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + t }});
