@@ -860,7 +860,7 @@
 
     // logout handler
     document.addEventListener('click', async function(e){
-      const t = e.target.closest('#logout-btn') || e.target.closest('.logout-btn');
+      const t = e.target.closest('#logout-btn') || e.target.closest('.logout-btn') || e.target.closest('.fp-logout');
       if (!t) return;
       e.preventDefault();
       if (!confirm('Bạn muốn đăng xuất không?')) return;
