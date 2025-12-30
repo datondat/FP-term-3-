@@ -557,7 +557,7 @@
 
 
 })(); 
-/* --- START: Inline advanced search injected into header (only "Lọc") --- */
+/* --- START: Inline advanced search (only "Lọc") --- */
 (function(){
   // If header not present, skip
   const headerContainer = document.querySelector('.header-inner, .site-header .container, header .container') || document.querySelector('header');
@@ -673,22 +673,25 @@
     resultsEl.appendChild(frag);
   }
 
+  // performSearchUrl: return structured result, do not throw, include text/json
   async function performSearchUrl(url) {
     try {
-      const r = await fetch(url);
-      if (!r.ok) {
-        const txt = await r.text().catch(()=>null);
-        console.error('server error body:', txt);
-        throw new Error('HTTP ' + r.status);
-      }
+      const r = await fetch(url, { credentials: 'same-origin' });
       const txt = await r.text().catch(()=>null);
-      try { return txt ? JSON.parse(txt) : null; } catch(e){ console.warn('parse fail', (txt||'').slice(0,300)); return null; }
+      let parsed = null;
+      try { parsed = txt ? JSON.parse(txt) : null; } catch(e) { parsed = null; }
+      if (!r.ok) {
+        console.error('server error body:', txt);
+        return { ok: false, status: r.status, body: txt, json: parsed };
+      }
+      return { ok: true, status: r.status, body: txt, json: parsed };
     } catch (e) {
       console.error('request error', e);
-      return null;
+      return { ok: false, error: e };
     }
   }
 
+  // Unified filter action with retry when server reports missing class_id
   async function onFilterAction() {
     const q = qInput ? (qInput.value || '').trim() : '';
     const grade = gradeSel.value;
@@ -696,16 +699,48 @@
     if (!q && !grade && !subject) { alert('Nhập từ khoá hoặc chọn Khối/Môn để lọc'); return; }
     document.getElementById('fp-search-panel-compact').style.display = 'block';
     document.getElementById('fp-search-info-compact').textContent = q ? 'Đang tìm...' : 'Đang lọc...';
-    const params = new URLSearchParams();
-    if (q) params.set('q', q);
-    params.set('page', '1');
-    params.set('limit', '50');
-    if (grade) params.set('grade', grade);
-    if (subject) params.set('subject', subject);
-    const base = (window.API_BASE ? window.API_BASE.replace(/\/$/,'') : '');
-    const url = (base ? base : '') + '/api/search?' + params.toString();
-    const json = await performSearchUrl(url);
-    renderResultsCompact(json || { total:0, results:[] });
+
+    function buildUrl(paramsObj) {
+      const params = new URLSearchParams();
+      if (paramsObj.q) params.set('q', paramsObj.q);
+      params.set('page', String(paramsObj.page || 1));
+      params.set('limit', String(paramsObj.limit || 50));
+      if (paramsObj.grade) params.set('grade', paramsObj.grade);
+      if (paramsObj.subject) params.set('subject', paramsObj.subject);
+      const base = (window.API_BASE ? window.API_BASE.replace(/\/$/,'') : '');
+      return (base ? base : '') + '/api/search?' + params.toString();
+    }
+
+    const params0 = { q: q || '', page:1, limit:50, grade: grade || '', subject: subject || '' };
+    const url0 = buildUrl(params0);
+    const resp0 = await performSearchUrl(url0);
+
+    if (resp0.ok) {
+      renderResultsCompact(resp0.json || { total:0, results:[] });
+      return;
+    }
+
+    const bodyText = String(resp0.body || '').toLowerCase();
+    if (resp0.status === 500 && bodyText.includes('class_id') && bodyText.includes('does not exist')) {
+      console.warn('[FP] server missing class_id; retry without grade');
+      document.getElementById('fp-search-info-compact').textContent = 'Server không hỗ trợ lọc theo Khối → Thử lại không dùng Khối...';
+      const params1 = { q: q || '', page:1, limit:50, subject: subject || '' };
+      const url1 = buildUrl(params1);
+      const resp1 = await performSearchUrl(url1);
+      if (resp1.ok) {
+        const info = document.getElementById('fp-search-info-compact');
+        if (info) info.textContent = `Kết quả (Khối bị bỏ): ${resp1.json && resp1.json.total ? resp1.json.total : 0}`;
+        renderResultsCompact(resp1.json || { total:0, results:[] });
+        return;
+      } else {
+        console.error('[FP] retry without grade also failed', resp1);
+        document.getElementById('fp-search-info-compact').textContent = 'Lỗi server (sau khi thử bỏ Khối). Xem console để biết chi tiết.';
+        return;
+      }
+    }
+
+    console.error('[FP] search/filter failed', resp0);
+    document.getElementById('fp-search-info-compact').textContent = 'Lỗi server. Kiểm tra console (F12) để biết chi tiết.';
   }
 
   filterBtn.addEventListener('click', function(e){ e.preventDefault(); onFilterAction(); });
@@ -736,5 +771,116 @@
     } catch(e){}
   })();
 
+  /* ========================
+     Auth integration — unified login/register/logout (no extra files)
+     Paste this code at the end of the file only once.
+     ======================== */
+  (function(){
+    if (window._fpAuthUnifiedInjected) return;
+    window._fpAuthUnifiedInjected = true;
+
+    async function callJson(url, opts={}) {
+      opts.credentials = 'include';
+      if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+        opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
+        opts.body = JSON.stringify(opts.body);
+      }
+      const res = await fetch(url, opts);
+      const txt = await res.text().catch(()=>null);
+      try { return { ok: res.ok, status: res.status, json: txt ? JSON.parse(txt) : null, text: txt }; } catch(e) { return { ok: res.ok, status: res.status, json: null, text: txt }; }
+    }
+
+    // selectors: adjust if your HTML differs
+    const LOGIN_FORM = document.getElementById('login-form');
+    const REGISTER_FORM = document.getElementById('register-form');
+    const NAV_OUT = document.querySelectorAll('.nav-logged-out');
+    const NAV_IN = document.querySelectorAll('.nav-logged-in');
+    const NAV_USER = document.querySelector('.nav-username');
+
+    function showLoggedIn(user) {
+      NAV_OUT.forEach(n=>n.style.display='none');
+      NAV_IN.forEach(n=>n.style.display='');
+      if (NAV_USER) NAV_USER.textContent = (user && (user.name || user.username)) || '';
+    }
+    function showLoggedOut() {
+      NAV_OUT.forEach(n=>n.style.display='');
+      NAV_IN.forEach(n=>n.style.display='none');
+      if (NAV_USER) NAV_USER.textContent = '';
+    }
+
+    // login form submit -> AJAX
+    if (LOGIN_FORM) {
+      LOGIN_FORM.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const f = new FormData(LOGIN_FORM);
+        const payload = { username: (f.get('username')||f.get('email')||''), password: f.get('password')||'' };
+        const btn = LOGIN_FORM.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+        const r = await callJson('/api/login', { method: 'POST', body: payload });
+        if (btn) btn.disabled = false;
+        if (r.ok && r.json && r.json.ok) {
+          showLoggedIn(r.json.user);
+          document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
+          if (typeof closeLoginModal === 'function') closeLoginModal();
+        } else {
+          const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng nhập thất bại');
+          alert('Đăng nhập thất bại: ' + msg);
+        }
+      });
+    }
+
+    // register form submit -> AJAX
+    if (REGISTER_FORM) {
+      REGISTER_FORM.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const f = new FormData(REGISTER_FORM);
+        const payload = { username: f.get('username'), password: f.get('password'), name: f.get('name') || null, email: f.get('email') || null };
+        const btn = REGISTER_FORM.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+        const r = await callJson('/api/register', { method: 'POST', body: payload });
+        if (btn) btn.disabled = false;
+        if (r.ok && r.json && r.json.ok) {
+          showLoggedIn(r.json.user);
+          document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
+          if (typeof closeRegisterModal === 'function') closeRegisterModal();
+        } else {
+          const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng ký thất bại');
+          alert('Đăng ký thất bại: ' + msg);
+        }
+      });
+    }
+
+    // intercept clicks on links to /register to open modal instead of navigate
+    document.addEventListener('click', function(e){
+      const a = e.target.closest('a[href="/register"], a[href="/signup"]');
+      if (!a) return;
+      e.preventDefault();
+      // open modal if exists
+      const modal = document.getElementById('register-modal') || document.getElementById('login-modal');
+      if (modal) modal.style.display = 'block';
+    });
+
+    // logout handler
+    document.addEventListener('click', async function(e){
+      const t = e.target.closest('#logout-btn') || e.target.closest('.logout-btn');
+      if (!t) return;
+      e.preventDefault();
+      if (!confirm('Bạn muốn đăng xuất không?')) return;
+      const r = await callJson('/api/logout', { method: 'POST' });
+      if (r.ok && r.json && r.json.ok) {
+        showLoggedOut();
+        document.dispatchEvent(new CustomEvent('user:loggedout'));
+      } else {
+        alert('Đăng xuất thất bại');
+      }
+    });
+
+    // initial check
+    (async function(){
+      const r = await callJson('/api/me', { method: 'GET' });
+      if (r.ok && r.json && r.json.ok && r.json.user) showLoggedIn(r.json.user);
+      else showLoggedOut();
+    })();
+
+  })();
+
 })(); 
-/* --- END: Inline advanced search --- */
+/* --- END: Inline advanced search & auth integration --- */
