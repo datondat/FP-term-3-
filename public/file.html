@@ -5,6 +5,13 @@
   <title>FP — Tài liệu</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="main.css">
+  <style>
+    /* Small styles for embedded viewer */
+    .viewer { width:100%; height:75vh; border-radius:8px; overflow:hidden; background:#fff; border:1px solid var(--border); margin-top:12px; }
+    .viewer .placeholder { padding:18px; color:var(--muted); }
+    .controls { display:flex; gap:8px; align-items:center; }
+    @media (max-width:800px){ .controls{flex-direction:column;align-items:flex-start} }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -27,7 +34,7 @@
           <h2 id="file-title" style="margin:0">Tài liệu</h2>
           <div id="file-meta" class="muted" style="font-size:13px"></div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;" class="controls">
           <a id="raw-link" class="btn" target="_blank" rel="noopener">Mở tài liệu</a>
           <a id="download-link" class="btn-ghost" rel="noopener" download>Tải về</a>
         </div>
@@ -36,8 +43,14 @@
       <div style="margin-top:12px;">
         <div class="muted" style="padding:18px;border-radius:8px;border:1px solid var(--border);">
           Click "Mở tài liệu" để xem tài liệu trên trang mới (stream từ Drive qua server).<br>
-          Nếu muốn tải về, click "Tải về".
+          Nếu muốn tải về, click "Tải về".<br>
+          Hoặc trang này sẽ cố gắng nhúng tài liệu vào ngay bên dưới (iframe/object). Nếu server trả header X-Frame-Options: DENY thì trình nhúng sẽ bị chặn và nút "Mở tài liệu" vẫn hoạt động.
         </div>
+      </div>
+
+      <!-- Viewer placeholder: script will replace its contents -->
+      <div id="viewer-wrapper" class="viewer">
+        <div id="viewer-placeholder" class="placeholder">Chuẩn bị trình xem tài liệu...</div>
       </div>
     </section>
 

@@ -1,14 +1,12 @@
 // public/subject-links.js
-// Đầy đủ: giữ nguyên toàn bộ mapping hoc10.vn cho các lớp 6..12
-// Kết hợp: hiển thị static links + cố gắng tìm file trên Drive (server-side /api/drive/search, fallback folders/files)
-// Cấu hình:
-// - Nếu backend chạy trên host/port khác: trước khi include file này, set window.API_BASE = 'http://host:port'
-// - Nếu muốn mapping grade->Drive folder server-side: set env DRIVE_GRADE_FOLDERS_JSON hoặc window.DRIVE_GRADE_FOLDERS client-side
+// Đầy đủ: static mapping hoc10.vn + Drive lookup (server-side search, fallback folder flow).
+// Phiên bản này đã xử lý an toàn khi server trả HTML thay vì JSON (để tránh "Unexpected token '<'").
+// Nếu backend chạy trên origin khác, set window.API_BASE = 'http://host:port' trước khi include file này.
 
 (function () {
   /* ========================
-     API base helper
-     ======================== */
+      API base helper
+      ======================== */
   const API_BASE = (window.API_BASE === undefined) ? '' : (window.API_BASE || '');
   function apiUrl(path) {
     if (!path) path = '/';
@@ -18,8 +16,8 @@
   }
 
   /* ========================
-     Helpers
-     ======================== */
+      Helpers
+      ======================== */
   function escapeHtml(s) {
     if (s === undefined || s === null) return '';
     return String(s).replace(/[&<>"']/g, function (m) {
@@ -59,9 +57,8 @@
   }
 
   /* ========================
-     FULL subject mapping (hoc10.vn)
-     KEEP FULL - DO NOT TRIM
-     ======================== */
+      FULL subject mapping (hoc10.vn)
+      ======================== */
   const SUBJECT_LINKS = {
     6: {
       'Ngữ văn': [
@@ -227,13 +224,14 @@
   };
 
   /* ========================
-     Drive helpers (fallback)
-     ======================== */
+      Drive helpers (fallback) - safe versions
+      ======================== */
   const DRIVE_CACHE = { rootFolders: null, subfoldersByParent: new Map() };
   function clearDriveCache() { DRIVE_CACHE.rootFolders = null; DRIVE_CACHE.subfoldersByParent.clear(); }
 
   async function resolveGradeFolderIdViaFolders(grade) {
     if (!DRIVE_CACHE.rootFolders) {
+      // This call uses apiGetJson which will throw if server returns non-JSON (and allow us to detect)
       const resp = await apiGetJson(apiUrl('/api/drive/folders'));
       DRIVE_CACHE.rootFolders = resp.folders || [];
     }
@@ -247,21 +245,58 @@
     return null;
   }
 
+  // Safe listSubfolders: detect HTML response and provide helpful error
   async function listSubfolders(parentId) {
     if (DRIVE_CACHE.subfoldersByParent.has(parentId)) return DRIVE_CACHE.subfoldersByParent.get(parentId);
-    const resp = await apiGetJson(apiUrl('/api/drive/folders?parentId=' + encodeURIComponent(parentId)));
-    const arr = resp.folders || [];
-    DRIVE_CACHE.subfoldersByParent.set(parentId, arr);
-    return arr;
+
+    const url = apiUrl('/api/drive/folders?parentId=' + encodeURIComponent(parentId));
+    try {
+      const res = await fetchWithTimeout(url, {}, 12000);
+      const text = await res.text().catch(()=>null);
+      const trimmed = (text || '').trim();
+
+      // If server returned HTML (index.html), indicate that clearly
+      if (trimmed && trimmed[0] === '<') {
+        const err = new Error('Server returned HTML instead of JSON when listing subfolders');
+        err._status = res.status;
+        err._body = trimmed;
+        throw err;
+      }
+
+      let json;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch (e) {
+        const err = new Error('Failed to parse JSON from server response when listing subfolders');
+        err._status = res.status;
+        err._body = text;
+        throw err;
+      }
+
+      if (!res.ok) {
+        const err = new Error(`HTTP ${res.status} ${res.statusText}`);
+        err._status = res.status;
+        err._body = text;
+        throw err;
+      }
+
+      const arr = (json && json.folders) ? json.folders : [];
+      DRIVE_CACHE.subfoldersByParent.set(parentId, arr);
+      return arr;
+    } catch (err) {
+      throw err;
+    }
   }
 
   async function resolveSubjectFolderUnderGradeViaFolders(gradeFolderId, subjectName) {
     const subs = await listSubfolders(gradeFolderId);
     const target = normalizeName(subjectName);
+
     let found = subs.find(sf => normalizeName(sf.name) === target);
     if (found) return found;
     found = subs.find(sf => normalizeName(sf.name).includes(target) || target.includes(normalizeName(sf.name)));
     if (found) return found;
+
     for (const sf of subs) {
       const n = normalizeName(sf.name).replace(/\(.+?\)/g,'').replace(/[^a-z0-9 ]/g,'');
       if (n === target || n.includes(target) || target.includes(n)) return sf;
@@ -275,8 +310,8 @@
   }
 
   /* ========================
-     UI: subjects and inline details
-     ======================== */
+      UI: subjects and inline details
+      ======================== */
   function createSubjectItem(name, grade) {
     const li = document.createElement('li');
     const a = document.createElement('a');
@@ -345,9 +380,9 @@
     detail.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                           <strong>${escapeHtml(name)} — Lớp ${escapeHtml(String(grade))}</strong>
                           <div class="muted">Liên kết tài liệu</div>
-                        </div>
-                        <div class="static-links" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;"></div>
-                        <div class="drive-links muted">Đang tìm và tải từ Drive...</div>`;
+                          </div>
+                          <div class="static-links" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;"></div>
+                          <div class="drive-links muted">Đang tìm và tải từ Drive...</div>`;
 
     panel.appendChild(detail);
 
@@ -368,14 +403,14 @@
       staticWrap.innerHTML = '<div class="muted">Không có liên kết hoc10.vn cho môn này.</div>';
     }
 
-    // Drive flow: try server-side search first, then fallback
+    // Drive flow: try server-side search first, then fallback folder flow
     const driveWrap = detail.querySelector('.drive-links');
 
-    // Try server-side convenience endpoint
+    // 1) Try server-side convenience search endpoint
     try {
       driveWrap.innerHTML = '<div class="muted">Tìm file (server-side search)...</div>';
       const searchUrl = apiUrl('/api/drive/search') + `?grade=${encodeURIComponent(grade)}&subject=${encodeURIComponent(name)}`;
-      const resp = await fetchWithTimeout(searchUrl, {}, 12000).catch(e => { throw e; });
+      const resp = await fetchWithTimeout(searchUrl, {}, 12000);
       if (resp.ok) {
         const json = await resp.json().catch(()=>null);
         if (json && json.ok && Array.isArray(json.files)) {
@@ -404,23 +439,61 @@
       console.warn('Search endpoint failed; falling back to folder flow:', e);
     }
 
-    // Fallback folder flow
+    // 2) Fallback: folder flow (grade folder -> subject folder -> files)
     try {
       driveWrap.innerHTML = '<div class="muted">Tìm folder khối lớp trên Drive...</div>';
-      const gradeFolderId = await resolveGradeFolderIdViaFolders(grade);
+      let gradeFolderId;
+      try {
+        gradeFolderId = await resolveGradeFolderIdViaFolders(grade);
+      } catch (e) {
+        // provide helpful message
+        const serverBody = e._body ? String(e._body).slice(0, 300) : null;
+        if (serverBody && serverBody[0] === '<') {
+          driveWrap.innerHTML = `<div class="muted">Server trả HTML thay vì JSON khi tìm folder khối lớp. Có thể API chưa mount hoặc bạn gọi sai origin. Đầu response: ${escapeHtml(serverBody.slice(0,200))}</div>`;
+        } else {
+          driveWrap.innerHTML = `<div class="muted">Lỗi khi tìm folder khối lớp: ${escapeHtml(e.message || String(e))}</div>`;
+        }
+        return;
+      }
+
       if (!gradeFolderId) {
         driveWrap.innerHTML = '<div class="muted">Không xác định được folder khối lớp trên Drive. Vui lòng cấu hình DRIVE_GRADE_FOLDERS_JSON hoặc window.DRIVE_GRADE_FOLDERS.</div>';
         return;
       }
 
       driveWrap.innerHTML = '<div class="muted">Tìm folder môn trong khối lớp...</div>';
-      const subjectFolder = await resolveSubjectFolderUnderGradeViaFolders(gradeFolderId, name);
+      let subjectFolder;
+      try {
+        subjectFolder = await resolveSubjectFolderUnderGradeViaFolders(gradeFolderId, name);
+      } catch (err) {
+        const serverBody = err._body ? String(err._body).slice(0, 300) : null;
+        if (serverBody && serverBody[0] === '<') {
+          driveWrap.innerHTML = `<div class="muted">Server trả HTML thay vì JSON khi liệt kê folder môn. Đầu response: ${escapeHtml(serverBody.slice(0,200))}</div>`;
+        } else {
+          driveWrap.innerHTML = `<div class="muted">Lỗi khi lấy danh sách folder môn: ${escapeHtml(err.message || String(err))}</div>`;
+        }
+        return;
+      }
+
       if (!subjectFolder) {
-        driveWrap.innerHTML = '<div class="muted">Không tìm thấy folder môn tương ứng trong khối lớp. Dưới đây là folder con:</div>';
-        const list = document.createElement('div'); list.style.marginTop='8px';
-        const subs = await listSubfolders(gradeFolderId);
-        (subs || []).forEach(sf => { const el=document.createElement('div'); el.className='muted'; el.textContent=`${sf.name} (id: ${sf.id})`; list.appendChild(el); });
-        driveWrap.appendChild(list);
+        try {
+          const subs = await listSubfolders(gradeFolderId);
+          driveWrap.innerHTML = '<div class="muted">Không tìm thấy folder môn tương ứng trong khối lớp. Dưới đây là folder con:</div>';
+          const list = document.createElement('div'); list.style.marginTop='8px';
+          (subs || []).forEach(sf => {
+            const el = document.createElement('div');
+            el.className = 'muted';
+            el.textContent = `${sf.name} (id: ${sf.id})`;
+            list.appendChild(el);
+          });
+          driveWrap.appendChild(list);
+        } catch (err) {
+          console.error('Error fetching subfolders for gradeFolderId', gradeFolderId, err);
+          const serverBody = err._body ? String(err._body).slice(0, 300) : null;
+          const statusInfo = err._status ? ` (status ${err._status})` : '';
+          const msg = serverBody ? `Lỗi server${statusInfo}: ${serverBody}` : (`Lỗi khi lấy danh sách folder con: ${escapeHtml(err.message || String(err))}`);
+          driveWrap.innerHTML = `<div class="muted">${escapeHtml(msg)}</div>`;
+        }
         return;
       }
 
@@ -452,8 +525,8 @@
   }
 
   /* ========================
-     Init
-     ======================== */
+      Init
+      ======================== */
   function initSubjects() {
     populateSubjects();
     const gs = document.getElementById('global-search');
@@ -461,12 +534,8 @@
       gs.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          const q = gs.value.trim().toLowerCase();
-          if (!q) return;
-          const anchors = Array.from(document.querySelectorAll('.subject-item'));
-          const el = anchors.find(a => (a.dataset.subject || a.textContent || '').toLowerCase().includes(q));
-          if (el) el.click();
-          else alert('Không tìm thấy môn tương ứng.');
+          // dispatch event so the filter UI will handle (we use single "Lọc" action)
+          document.dispatchEvent(new Event('fp:doFilter'));
         }
       });
     }
@@ -479,11 +548,193 @@
   }
 
   /* ========================
-     Expose for debug
-     ======================== */
+      Expose for debug
+      ======================== */
   window.FP = window.FP || {};
   window.FP.subjectLinks = SUBJECT_LINKS;
   window.FP.clearDriveCache = clearDriveCache;
   window.FP.apiBase = API_BASE;
 
-})();
+
+})(); 
+/* --- START: Inline advanced search injected into header (only "Lọc") --- */
+(function(){
+  // If header not present, skip
+  const headerContainer = document.querySelector('.header-inner, .site-header .container, header .container') || document.querySelector('header');
+  if (!headerContainer) return;
+
+  // avoid duplicate injection
+  if (document.getElementById('fp-advanced-search')) return;
+
+  // CSS (injected)
+  const css = `
+  #fp-advanced-search { display:flex; gap:8px; align-items:center; margin-left:12px; }
+  #fp-advanced-search select, #fp-advanced-search input { padding:6px 8px; border-radius:6px; border:1px solid #ddd; background:#fff; }
+  #fp-advanced-search .fp-btn { padding:6px 10px; border-radius:6px; background:#fff; color:#333; border:1px solid #ddd; cursor:pointer; font-weight:600; }
+  #fp-search-panel { position:fixed; left:0; right:0; top:64px; max-height:0; overflow:hidden; transition: max-height .28s ease, box-shadow .28s; z-index:1200;}
+  #fp-search-panel.open { max-height:70vh; box-shadow: 0 8px 30px rgba(0,0,0,0.12); background: #faf7f6; padding:12px 0; }
+  #fp-search-panel .fp-panel-inner { max-width:1100px; margin:0 auto; padding:12px; }
+  .fp-result { background:#fff; border:1px solid #eee; padding:10px; border-radius:8px; margin-bottom:8px; }
+  .fp-result a { font-weight:700; color:#111; text-decoration:none; }
+  .fp-result .fp-snippet { color:#666; margin-top:6px; }
+  .fp-panel-actions { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+  .fp-close { background:#fff; border:1px solid #ddd; padding:6px 10px; border-radius:6px; cursor:pointer; }
+  @media (max-width:800px){ #fp-advanced-search { display:block; margin-top:8px; } #fp-search-panel { top:92px; } }
+  `;
+  const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s);
+
+  // Build UI (only filter)
+  const wrapper = document.createElement('div');
+  wrapper.id = 'fp-advanced-search';
+  wrapper.innerHTML = `
+    <input id="fp-global-q" type="search" placeholder="Tìm (nhấn Enter)" aria-label="Tìm" style="min-width:200px" />
+    <select id="fp-grade"><option value="">Khối</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+    <select id="fp-subject"><option value="">Môn</option></select>
+    <button id="fp-filter-btn" class="fp-btn">Lọc</button>
+  `;
+
+  // Insert into header: try to place near nav or search input
+  const nav = headerContainer.querySelector('.site-nav') || headerContainer.querySelector('.header-actions') || headerContainer;
+  nav.appendChild(wrapper);
+
+  // Panel for compact results (below header)
+  let panel = document.getElementById('fp-search-panel-compact');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'fp-search-panel-compact';
+    panel.style.display = 'none';
+    panel.style.width = '100%';
+    panel.style.background = '#faf7f6';
+    panel.style.padding = '12px';
+    panel.style.borderTop = '1px solid rgba(0,0,0,0.04)';
+    panel.innerHTML = '<div id="fp-search-info-compact" class="muted">Chưa lọc</div><div id="fp-search-results-compact" style="margin-top:8px"></div>';
+    const headerNode = document.querySelector('header') || document.body;
+    if (headerNode && headerNode.parentNode) headerNode.parentNode.insertBefore(panel, headerNode.nextSibling);
+  }
+
+  // Helpers & wiring
+  const existingGlobal = document.getElementById('global-search') || document.querySelector('input[placeholder*="Tìm"]') || document.querySelector('input[type="search"].global-search') || document.querySelector('input[type="search"]');
+  const localInput = document.getElementById('fp-global-q');
+  if (existingGlobal && localInput) localInput.remove(); // reuse page's global input
+
+  const qInput = existingGlobal || document.getElementById('fp-global-q') || null;
+  const gradeSel = document.getElementById('fp-grade');
+  const subjectSel = document.getElementById('fp-subject');
+  const filterBtn = document.getElementById('fp-filter-btn');
+
+  // ensure default All
+  if (gradeSel) gradeSel.value = '';
+
+  function populateSubjectsForGrade(g) {
+    subjectSel.innerHTML = '<option value="">Môn</option>';
+    if (!g) return;
+    const map = (window.FP && window.FP.subjectLinks) ? window.FP.subjectLinks : null;
+    if (map && map[g]) {
+      const keys = Object.keys(map[g]).sort();
+      keys.forEach(k => {
+        const o = document.createElement('option'); o.value = k; o.textContent = k; subjectSel.appendChild(o);
+      });
+    } else {
+      const fallback = {6:['Toán','Ngữ văn','Tiếng Anh'],7:['Toán','Ngữ văn','Tiếng Anh'],8:['Toán','Ngữ văn','Tiếng Anh'],9:['Toán','Ngữ văn','Tiếng Anh'],10:['Toán','Ngữ văn'],11:['Toán','Ngữ văn'],12:['Toán','Ngữ văn']};
+      (fallback[g]||[]).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; subjectSel.appendChild(o); });
+    }
+  }
+
+  gradeSel.addEventListener('change', ()=> populateSubjectsForGrade(gradeSel.value));
+
+  function renderResultsCompact(json) {
+    const resultsEl = document.getElementById('fp-search-results-compact');
+    const infoEl = document.getElementById('fp-search-info-compact');
+    resultsEl.innerHTML = '';
+    const total = json && json.total ? json.total : 0;
+    infoEl.textContent = 'Kết quả: ' + total;
+    if (!json || !json.results || !json.results.length) {
+      resultsEl.innerHTML = '<div class="muted" style="padding:12px">Không tìm thấy kết quả.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    json.results.forEach(it => {
+      const d = document.createElement('div');
+      d.style.background = '#fff';
+      d.style.padding = '10px';
+      d.style.border = '1px solid #eee';
+      d.style.borderRadius = '8px';
+      d.style.marginBottom = '8px';
+      let href = '';
+      if (it.url) {
+        if (/^https?:\/\//i.test(it.url)) href = it.url;
+        else href = '/file.html?id=' + encodeURIComponent(it.url) + (it.title ? ('&name=' + encodeURIComponent(it.title)) : '');
+      }
+      if (href) d.innerHTML = `<div style="font-weight:700"><a href="${href}" target="_blank" rel="noopener">${escapeHtml(it.title || it.filename || 'Tài liệu')}</a></div>`;
+      else d.innerHTML = `<div style="font-weight:700">${escapeHtml(it.title || it.filename || 'Tài liệu')}</div>`;
+      if (it.contentSnippet) d.innerHTML += `<div style="color:#666;margin-top:6px">${escapeHtml(it.contentSnippet)}</div>`;
+      frag.appendChild(d);
+    });
+    resultsEl.appendChild(frag);
+  }
+
+  async function performSearchUrl(url) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) {
+        const txt = await r.text().catch(()=>null);
+        console.error('server error body:', txt);
+        throw new Error('HTTP ' + r.status);
+      }
+      const txt = await r.text().catch(()=>null);
+      try { return txt ? JSON.parse(txt) : null; } catch(e){ console.warn('parse fail', (txt||'').slice(0,300)); return null; }
+    } catch (e) {
+      console.error('request error', e);
+      return null;
+    }
+  }
+
+  async function onFilterAction() {
+    const q = qInput ? (qInput.value || '').trim() : '';
+    const grade = gradeSel.value;
+    const subject = subjectSel.value;
+    if (!q && !grade && !subject) { alert('Nhập từ khoá hoặc chọn Khối/Môn để lọc'); return; }
+    document.getElementById('fp-search-panel-compact').style.display = 'block';
+    document.getElementById('fp-search-info-compact').textContent = q ? 'Đang tìm...' : 'Đang lọc...';
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    params.set('page', '1');
+    params.set('limit', '50');
+    if (grade) params.set('grade', grade);
+    if (subject) params.set('subject', subject);
+    const base = (window.API_BASE ? window.API_BASE.replace(/\/$/,'') : '');
+    const url = (base ? base : '') + '/api/search?' + params.toString();
+    const json = await performSearchUrl(url);
+    renderResultsCompact(json || { total:0, results:[] });
+  }
+
+  filterBtn.addEventListener('click', function(e){ e.preventDefault(); onFilterAction(); });
+  if (qInput) qInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); onFilterAction(); } });
+  const pageGlobal = document.getElementById('global-search') || document.querySelector('input[placeholder*="Tìm"]');
+  if (pageGlobal) pageGlobal.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); onFilterAction(); } });
+
+  // support event from initSubjects
+  document.addEventListener('fp:doFilter', function(){ onFilterAction(); });
+
+  // init from URL params
+  (function initFromQuery(){
+    try {
+      const up = new URL(window.location.href).searchParams;
+      const q0 = up.get('q'); const g0 = up.get('grade'); const s0 = up.get('subject');
+      if (g0) { gradeSel.value = g0; populateSubjectsForGrade(g0); }
+      if (s0) {
+        if (!Array.from(subjectSel.options).find(o=>o.value===s0)) {
+          const o = document.createElement('option'); o.value = s0; o.textContent = s0; subjectSel.appendChild(o);
+        }
+        subjectSel.value = s0;
+      }
+      if (q0) {
+        if (pageGlobal) pageGlobal.value = q0;
+        else if (qInput) qInput.value = q0;
+        setTimeout(()=> onFilterAction(), 300);
+      }
+    } catch(e){}
+  })();
+
+})(); 
+/* --- END: Inline advanced search --- */
