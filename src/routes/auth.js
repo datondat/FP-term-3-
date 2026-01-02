@@ -20,7 +20,6 @@
  *
  * Notes:
  *  - This file is intentionally explicit and commented for maintainability.
- *  - Adjust cookie name cleared on logout if you configured a custom session cookie name.
  */
 
 const express = require('express');
@@ -55,7 +54,6 @@ function safeUserRow(row) {
 
 /**
  * Find user by username.
- * (If you want email logins you can expand this.)
  */
 async function findUserByUsername(username) {
   const sql = 'SELECT id, username, name, email, password_hash FROM users WHERE username = $1 LIMIT 1';
@@ -79,9 +77,6 @@ async function createUser({ username, password, name, email }) {
 
 /**
  * POST /api/register
- * - Creates user
- * - Stores userId into session (logs in)
- * - Responds with JSON for AJAX; otherwise redirects to '/'
  */
 router.post('/register', async (req, res) => {
   try {
@@ -95,7 +90,6 @@ router.post('/register', async (req, res) => {
     const exists = await pool.query('SELECT 1 FROM users WHERE username = $1 LIMIT 1', [username]);
     if (exists.rows.length) {
       if (wantsJson(req)) return res.status(409).json({ ok: false, error: 'username_exists' });
-      // For non-json, redirect back (adjust your UI/flash handling as needed)
       return res.redirect('/register?error=username_exists');
     }
 
@@ -105,7 +99,6 @@ router.post('/register', async (req, res) => {
     if (req.session) req.session.userId = user.id;
 
     if (wantsJson(req)) return res.json({ ok: true, user });
-    // non-AJAX fallback: redirect to home or profile
     return res.redirect('/');
   } catch (err) {
     console.error('register error', err);
@@ -116,9 +109,6 @@ router.post('/register', async (req, res) => {
 
 /**
  * POST /api/login
- * - Validates credentials
- * - Stores userId into session
- * - Responds with JSON if requested; otherwise redirect back/default
  */
 router.post('/login', async (req, res) => {
   try {
@@ -159,8 +149,6 @@ router.post('/login', async (req, res) => {
 
 /**
  * POST /api/logout
- * - Destroys session, clears cookie (connect.sid by default)
- * - Returns JSON { ok:true } on AJAX, otherwise redirects to '/'
  */
 router.post('/logout', (req, res) => {
   try {
@@ -173,7 +161,6 @@ router.post('/logout', (req, res) => {
     // Destroy session
     req.session.destroy(err => {
       // Always attempt to clear cookie used by the session middleware;
-      // default cookie name is 'connect.sid' — change if you configured otherwise.
       try { res.clearCookie && res.clearCookie('connect.sid'); } catch (e) { /* ignore */ }
 
       if (err) {
@@ -193,9 +180,6 @@ router.post('/logout', (req, res) => {
 
 /**
  * GET /api/me
- * - Always returns JSON
- * - If logged in (req.session.userId) returns { ok:true, user }
- * - Otherwise returns { ok:false }
  */
 router.get('/me', async (req, res) => {
   try {
