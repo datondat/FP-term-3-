@@ -533,6 +533,7 @@
       gs.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
+          // dispatch event so the filter UI will handle (we use single "Lọc" action)
           document.dispatchEvent(new Event('fp:doFilter'));
         }
       });
@@ -1031,10 +1032,38 @@
       }, true);
     }
 
-    bindForceNav('#link-login');
-    bindForceNav('#link-register');
+    // Bind common selectors used in your template
+    bindForceNav('#link-login');      // <a id="link-login" href="login.html">
+    bindForceNav('#link-register');   // <a id="link-register" href="register.html">
     bindForceNav('a.nav-link[href$="login.html"]');
     bindForceNav('a.nav-link[href$="register.html"]');
+
+    // Also ensure keyboard Enter on focused links works
+    document.addEventListener('keydown', function(ev){
+      try {
+        if (ev.key !== 'Enter') return;
+        const el = document.activeElement;
+        if (!el) return;
+        if (el.matches && (el.matches('#link-login') || el.matches('#link-register') || (el.matches('a.nav-link') && (el.getAttribute('href')||'').includes('login')) || (el.matches('a.nav-link') && (el.getAttribute('href')||'').includes('register')))) {
+          ev.preventDefault();
+          const href = el.getAttribute('href') || el.dataset.href;
+          if (href) safeAssign(href);
+        }
+      } catch(e) { console.error(e); }
+    }, true);
+
+    // Defensive: if nav links are replaced/added later, auto-bind by mutation observer
+    const obs = new MutationObserver((mutations) => {
+      try {
+        for (const m of mutations) {
+          if (m.addedNodes && m.addedNodes.length) {
+            // nothing extra required, our delegated listeners will catch them
+          }
+        }
+      } catch(e){}
+    });
+    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+
   })();
 
 })();
