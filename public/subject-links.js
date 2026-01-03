@@ -1,7 +1,6 @@
 // public/subject-links.js
-// Đầy đủ: static mapping hoc10.vn + Drive lookup (server-side search, fallback folder flow).
-// Phiên bản này đã xử lý an toàn khi server trả HTML thay vì JSON (để tránh "Unexpected token '<'").
-// Nếu backend chạy trên origin khác, set window.API_BASE = 'http://host:port' trước khi include file này.
+// Full frontend script: subject mappings + drive helpers + auth integration + nav sync + defensive handlers.
+// Paste/replace your existing public/subject-links.js with this file (backup original first).
 
 (function () {
   /* ========================
@@ -534,7 +533,6 @@
       gs.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          // dispatch event so the filter UI will handle (we use single "Lọc" action)
           document.dispatchEvent(new Event('fp:doFilter'));
         }
       });
@@ -773,21 +771,39 @@
 
   /* ========================
      Auth integration — unified login/register/logout (no extra files)
-     Paste this code at the end of the file only once.
+     This block handles AJAX login/register, dispatches events,
+     and is resilient to extension errors.
      ======================== */
   (function(){
     if (window._fpAuthUnifiedInjected) return;
     window._fpAuthUnifiedInjected = true;
 
     async function callJson(url, opts={}) {
-      opts.credentials = 'include';
-      if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
-        opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
-        opts.body = JSON.stringify(opts.body);
+      try {
+        opts = opts || {};
+        opts.credentials = 'include';
+        if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+          opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
+          opts.body = JSON.stringify(opts.body);
+        }
+        const res = await fetch(url, opts);
+        const txt = await res.text().catch(()=>null);
+        try { return { ok: res.ok, status: res.status, json: txt ? JSON.parse(txt) : null, text: txt }; } catch(e) { return { ok: res.ok, status: res.status, json: null, text: txt }; }
+      } catch (err) {
+        console.error('[FP] callJson error', err);
+        return { ok: false, error: err };
       }
-      const res = await fetch(url, opts);
-      const txt = await res.text().catch(()=>null);
-      try { return { ok: res.ok, status: res.status, json: txt ? JSON.parse(txt) : null, text: txt }; } catch(e) { return { ok: res.ok, status: res.status, json: null, text: txt }; }
+    }
+
+    function safe(fn) {
+      return function (ev) {
+        try {
+          return fn.call(this, ev);
+        } catch (err) {
+          console.error('[FP] handler caught error (likely extension):', err);
+          return;
+        }
+      };
     }
 
     // selectors: adjust if your HTML differs
@@ -798,19 +814,39 @@
     const NAV_USER = document.querySelector('.nav-username');
 
     function showLoggedIn(user) {
-      NAV_OUT.forEach(n=>n.style.display='none');
-      NAV_IN.forEach(n=>n.style.display='');
-      if (NAV_USER) NAV_USER.textContent = (user && (user.name || user.username)) || '';
+      try {
+        if (NAV_OUT) NAV_OUT.forEach(n=>n.style.display='none');
+        if (NAV_IN && NAV_IN.length) NAV_IN.forEach(n=>n.style.display='');
+        if (NAV_USER && user) NAV_USER.textContent = user.name || user.username || '';
+        // fallback: if no nav-in area present, inject a simple display
+        if ((!NAV_IN || NAV_IN.length===0) && user) {
+          const header = document.querySelector('header') || document.querySelector('nav') || document.body;
+          let inj = header.querySelector('.fp-injected-auth');
+          if (!inj) {
+            inj = document.createElement('div');
+            inj.className = 'fp-injected-auth';
+            inj.style.display = 'inline-flex';
+            inj.style.alignItems = 'center';
+            inj.style.gap = '8px';
+            header.appendChild(inj);
+          }
+          inj.innerHTML = `<span class="nav-username" style="font-weight:600">${user.name||user.username||'Người dùng'}</span><a href="#" id="logout-btn" style="margin-left:8px;color:#c94">Đăng xuất</a>`;
+        }
+      } catch(e){ console.error('[FP] showLoggedIn', e); }
     }
+
     function showLoggedOut() {
-      NAV_OUT.forEach(n=>n.style.display='');
-      NAV_IN.forEach(n=>n.style.display='none');
-      if (NAV_USER) NAV_USER.textContent = '';
+      try {
+        if (NAV_OUT) NAV_OUT.forEach(n=>n.style.display='');
+        if (NAV_IN) NAV_IN.forEach(n=>n.style.display='none');
+        if (NAV_USER) NAV_USER.textContent = '';
+        const inj = document.querySelector('.fp-injected-auth'); if (inj) inj.remove();
+      } catch(e){ console.error('[FP] showLoggedOut', e); }
     }
 
     // login form submit -> AJAX
     if (LOGIN_FORM) {
-      LOGIN_FORM.addEventListener('submit', async function(e){
+      LOGIN_FORM.addEventListener('submit', safe(async function(e){
         e.preventDefault();
         const f = new FormData(LOGIN_FORM);
         const payload = { username: (f.get('username')||f.get('email')||''), password: f.get('password')||'' };
@@ -820,17 +856,17 @@
         if (r.ok && r.json && r.json.ok) {
           showLoggedIn(r.json.user);
           document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
-          if (typeof closeLoginModal === 'function') closeLoginModal();
+          if (typeof closeLoginModal === 'function') try { closeLoginModal(); } catch(e){}
         } else {
           const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng nhập thất bại');
           alert('Đăng nhập thất bại: ' + msg);
         }
-      });
+      }));
     }
 
     // register form submit -> AJAX
     if (REGISTER_FORM) {
-      REGISTER_FORM.addEventListener('submit', async function(e){
+      REGISTER_FORM.addEventListener('submit', safe(async function(e){
         e.preventDefault();
         const f = new FormData(REGISTER_FORM);
         const payload = { username: f.get('username'), password: f.get('password'), name: f.get('name') || null, email: f.get('email') || null };
@@ -840,30 +876,20 @@
         if (r.ok && r.json && r.json.ok) {
           showLoggedIn(r.json.user);
           document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
-          if (typeof closeRegisterModal === 'function') closeRegisterModal();
+          if (typeof closeRegisterModal === 'function') try { closeRegisterModal(); } catch(e){}
         } else {
           const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng ký thất bại');
           alert('Đăng ký thất bại: ' + msg);
         }
-      });
+      }));
     }
 
-    // intercept clicks on links to /register to open modal instead of navigate
-    document.addEventListener('click', function(e){
-      const a = e.target.closest('a[href="/register"], a[href="/signup"]');
-      if (!a) return;
-      e.preventDefault();
-      // open modal if exists
-      const modal = document.getElementById('register-modal') || document.getElementById('login-modal');
-      if (modal) modal.style.display = 'block';
-    });
-
-    // logout handler
-    document.addEventListener('click', async function(e){
-      const t = e.target.closest('#logout-btn') || e.target.closest('.logout-btn') || e.target.closest('.fp-logout');
+    // logout handler (delegated)
+    document.addEventListener('click', safe(async function(e){
+      const t = e.target.closest && (e.target.closest('#logout-btn') || e.target.closest('.logout-btn') || e.target.closest('.fp-logout'));
       if (!t) return;
       e.preventDefault();
-      if (!confirm('Bạn muốn đăng xuất không?')) return;
+      if (!confirm('Bạn muốn đăng xuất?')) return;
       const r = await callJson('/api/logout', { method: 'POST' });
       if (r.ok && r.json && r.json.ok) {
         showLoggedOut();
@@ -871,16 +897,144 @@
       } else {
         alert('Đăng xuất thất bại');
       }
-    });
+    }));
 
     // initial check
     (async function(){
-      const r = await callJson('/api/me', { method: 'GET' });
-      if (r.ok && r.json && r.json.ok && r.json.user) showLoggedIn(r.json.user);
-      else showLoggedOut();
+      try {
+        const r = await callJson('/api/me', { method: 'GET' });
+        if (r.ok && r.json && r.json.ok && r.json.user) showLoggedIn(r.json.user);
+        else showLoggedOut();
+      } catch (e) {
+        console.warn('auth init error', e);
+        showLoggedOut();
+      }
     })();
 
   })();
 
-})(); 
-/* --- END: Inline advanced search & auth integration --- */
+  /* ========================
+     NAV AUTH SYNC (append / ensure header links update)
+     This will hide #link-login and #link-register and show #link-logout when logged in.
+     Works with the server /api/me endpoint and with the auth handlers above.
+     ======================== */
+  (function(){
+    if (window._fpNavAuthSync) return;
+    window._fpNavAuthSync = true;
+
+    async function callApiJson(url, opts = {}) {
+      try {
+        opts = Object.assign({}, opts);
+        opts.credentials = 'include';
+        if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+          opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
+          opts.body = JSON.stringify(opts.body);
+        }
+        const res = await fetch(url, opts);
+        const text = await res.text().catch(()=>null);
+        try { return { ok: res.ok, status: res.status, json: text ? JSON.parse(text) : null, text }; }
+        catch(e){ return { ok: res.ok, status: res.status, json: null, text }; }
+      } catch (err) {
+        console.error('[FP] callApiJson error', err);
+        return { ok: false, error: err };
+      }
+    }
+
+    function getEls() {
+      return {
+        loginLink: document.getElementById('link-login'),
+        registerLink: document.getElementById('link-register'),
+        logoutLink: document.getElementById('link-logout')
+      };
+    }
+
+    function showLoggedIn(user) {
+      try {
+        const { loginLink, registerLink, logoutLink } = getEls();
+        if (loginLink) loginLink.style.display = 'none';
+        if (registerLink) registerLink.style.display = 'none';
+        if (logoutLink) {
+          logoutLink.style.display = '';
+          logoutLink.textContent = user && (user.name || user.username) ? `Đăng xuất (${user.name || user.username})` : 'Đăng xuất';
+          logoutLink.setAttribute('href', '#');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function showLoggedOut() {
+      try {
+        const { loginLink, registerLink, logoutLink } = getEls();
+        if (loginLink) loginLink.style.display = '';
+        if (registerLink) registerLink.style.display = '';
+        if (logoutLink) logoutLink.style.display = 'none';
+      } catch (e) { console.error(e); }
+    }
+
+    async function refreshAuthState() {
+      const r = await callApiJson('/api/me', { method: 'GET' });
+      if (r.ok && r.json && r.json.ok && r.json.user) {
+        showLoggedIn(r.json.user);
+        return;
+      } else {
+        showLoggedOut();
+      }
+    }
+
+    document.addEventListener('click', async function(e){
+      const t = e.target && e.target.closest && (e.target.closest('#link-logout') || e.target.closest('a#link-logout'));
+      if (!t) return;
+      e.preventDefault();
+      if (!confirm('Bạn muốn đăng xuất?')) return;
+      const r = await callApiJson('/api/logout', { method: 'POST' });
+      if (r.ok && ((r.json && r.json.ok) || r.status === 200)) {
+        showLoggedOut();
+        document.dispatchEvent(new CustomEvent('user:loggedout'));
+      } else {
+        alert('Đăng xuất thất bại');
+      }
+    }, true);
+
+    document.addEventListener('user:loggedin', function(ev){
+      const user = ev && ev.detail ? ev.detail : null;
+      if (user) showLoggedIn(user);
+    });
+    document.addEventListener('user:loggedout', showLoggedOut);
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshAuthState);
+    else setTimeout(refreshAuthState, 30);
+  })();
+
+  /* ========================
+     Force navigation for login/register links (defensive)
+     If other scripts block navigation, this listener will force it.
+     ======================== */
+  (function(){
+    if (window._fpForceNavInstalled) return;
+    window._fpForceNavInstalled = true;
+
+    function safeAssign(href) {
+      try { window.location.assign(href); } catch(e) { try { window.location.href = href; } catch(e){} }
+    }
+
+    function bindForceNav(selector) {
+      document.addEventListener('click', function(ev){
+        try {
+          const t = ev.target && ev.target.closest && ev.target.closest(selector);
+          if (!t) return;
+          if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) return;
+          ev.preventDefault();
+          ev.stopPropagation && ev.stopPropagation();
+          const href = t.getAttribute('href') || t.dataset.href;
+          if (!href) return;
+          safeAssign(href);
+        } catch (err) { console.error('[FP] force-nav handler error', err); }
+      }, true);
+    }
+
+    bindForceNav('#link-login');
+    bindForceNav('#link-register');
+    bindForceNav('a.nav-link[href$="login.html"]');
+    bindForceNav('a.nav-link[href$="register.html"]');
+  })();
+
+})();

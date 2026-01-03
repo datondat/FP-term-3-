@@ -1,25 +1,14 @@
 /**
  * src/routes/auth.js
- *
- * Full, explicit auth route implementing:
- *  - POST /api/register    (creates user, hashes password, logs in)
- *  - POST /api/login       (checks credentials, logs in)
- *  - POST /api/logout      (destroys session)
- *  - GET  /api/me          (returns current user if logged in)
- *
- * Behavior:
- *  - Returns JSON for AJAX/JSON requests.
- *  - Preserves compatibility with standard form POSTs by redirecting when the request
- *    does not ask for JSON.
+ * POST /api/register
+ * POST /api/login
+ * POST /api/logout
+ * GET  /api/me
  *
  * Requirements:
- *  - ../db exports `pool` (pg Pool)
- *  - express-session configured in your main app (app.js) before mounting these routes
- *  - table `users` with columns: id, username, password_hash, name, email
- *  - bcrypt installed (npm i bcrypt)
- *
- * Notes:
- *  - This file is intentionally explicit and commented for maintainability.
+ * - ../db exports `pool` (pg Pool)
+ * - express-session configured in your main app BEFORE mounting this router
+ * - bcrypt installed (npm i bcrypt)
  */
 
 const express = require('express');
