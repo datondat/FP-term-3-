@@ -1,27 +1,24 @@
 /**
- * src/routes/auth.js
- * POST /api/register
- * POST /api/login
- * POST /api/logout
- * GET  /api/me
- *
- * Notes:
- * - This version returns the user's role (e.g. "user" or "admin") in responses.
- * - It will accept either username or email for login.
- * - Requires src/db.js that exports { pool } (pg Pool).
- * - Ensure express-session is configured in server.js before mounting this router.
+ * Updated auth.js: ensure session saved before responding.
+ * No email/name columns assumed (uses username, password_hash, role).
  */
 
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
+
+let bcrypt;
+try {
+  bcrypt = require('bcrypt');
+} catch (e) {
+  console.warn('bcrypt native not available, falling back to bcryptjs.');
+  bcrypt = require('bcryptjs');
+}
+
 const { pool } = require('../db');
 
-// Accept both JSON and urlencoded form bodies for convenience
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-// Helper: detect if request wants JSON (AJAX or Accept header)
 function wantsJson(req) {
   if (req.xhr) return true;
   const accept = (req.get('Accept') || '').toLowerCase();
@@ -31,75 +28,69 @@ function wantsJson(req) {
   return false;
 }
 
-// Helper: return user object safe for sending to client (includes role)
 function safeUserRow(row) {
   if (!row) return null;
   return {
     id: row.id,
     username: row.username,
-    name: row.name || null,
-    email: row.email || null,
     role: row.role || 'user'
   };
 }
 
-/**
- * Find user by username OR email.
- * Returns full row including password_hash and role.
- */
 async function findUserByIdentifier(identifier) {
-  const sql = 'SELECT id, username, name, email, password_hash, role FROM users WHERE username = $1 OR email = $1 LIMIT 1';
+  const sql = 'SELECT id, username, password_hash, role FROM users WHERE username = $1 LIMIT 1';
   const r = await pool.query(sql, [identifier]);
   return r.rows[0] || null;
 }
 
-/**
- * Create a new user row. Returns the created user (without password_hash).
- * By default role is left to DB default (should be 'user'), but you may pass role to override.
- */
-async function createUser({ username, password, name, email, role }) {
+async function createUser({ username, password, role }) {
   const hash = await bcrypt.hash(password, 12);
-  // If role explicitly provided, insert it; else rely on DB default.
   if (role) {
     const sql = `
-      INSERT INTO users (username, password_hash, name, email, role)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, username, name, email, role
+      INSERT INTO users (username, password_hash, role)
+      VALUES ($1, $2, $3)
+      RETURNING id, username, role
     `;
-    const r = await pool.query(sql, [username, hash, name || null, email || null, role]);
+    const r = await pool.query(sql, [username, hash, role]);
     return r.rows[0];
   } else {
     const sql = `
-      INSERT INTO users (username, password_hash, name, email)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, username, name, email, role
+      INSERT INTO users (username, password_hash)
+      VALUES ($1, $2)
+      RETURNING id, username, role
     `;
-    const r = await pool.query(sql, [username, hash, name || null, email || null]);
+    const r = await pool.query(sql, [username, hash]);
     return r.rows[0];
   }
 }
 
-/**
- * POST /api/register
- */
+/** POST /api/register */
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, name, email } = req.body || {};
+    const { username, password } = req.body || {};
     if (!username || !password) {
       if (wantsJson(req)) return res.status(400).json({ ok: false, error: 'username and password required' });
       return res.status(400).send('username and password required');
     }
 
-    // Check if username or email exists
-    const exists = await pool.query('SELECT 1 FROM users WHERE username = $1 OR email = $2 LIMIT 1', [username, email || '']);
+    const exists = await pool.query('SELECT 1 FROM users WHERE username = $1 LIMIT 1', [username]);
     if (exists.rows.length) {
-      if (wantsJson(req)) return res.status(409).json({ ok: false, error: 'username_or_email_exists' });
-      return res.redirect('/register?error=username_or_email_exists');
+      if (wantsJson(req)) return res.status(409).json({ ok: false, error: 'username_exists' });
+      return res.redirect('/register?error=username_exists');
     }
 
-    const user = await createUser({ username, password, name, email });
-    // Attach to session (login)
+    const user = await createUser({ username, password });
     if (req.session) req.session.userId = user.id;
+
+    // Ensure session is saved before responding
+    if (req.session) {
+      req.session.save(err => {
+        if (err) console.error('session save error (register):', err);
+        if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
+        return res.redirect('/');
+      });
+      return;
+    }
 
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
     return res.redirect('/');
@@ -110,11 +101,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-/**
- * POST /api/login
- * Accepts JSON or form: { username: '...', password: '...' }
- * username may be username OR email.
- */
+/** POST /api/login */
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
@@ -135,14 +122,24 @@ router.post('/login', async (req, res) => {
       return res.redirect('/login?error=invalid_credentials');
     }
 
-    // success -> set session
     if (req.session) req.session.userId = user.id;
 
-    const safeUser = safeUserRow(user);
+    // ensure session persisted before sending response
+    if (req.session) {
+      req.session.save(err => {
+        if (err) {
+          console.error('session save error (login):', err);
+          if (wantsJson(req)) return res.status(500).json({ ok: false, error: 'session_save_failed' });
+          return res.status(500).send('session save failed');
+        }
+        if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
+        const redirectTo = req.query.next || req.body.next || '/';
+        return res.redirect(redirectTo);
+      });
+      return;
+    }
 
-    if (wantsJson(req)) return res.json({ ok: true, user: safeUser });
-
-    // non-json: redirect to original page or home
+    if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
     const redirectTo = req.query.next || req.body.next || '/';
     return res.redirect(redirectTo);
   } catch (err) {
@@ -152,22 +149,15 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/**
- * POST /api/logout
- */
+/** logout and /me unchanged (no email dependency) **/
 router.post('/logout', (req, res) => {
   try {
-    // If no session, treat as success
     if (!req.session) {
       if (wantsJson(req)) return res.json({ ok: true });
       return res.redirect('/');
     }
-
-    // Destroy session
     req.session.destroy(err => {
-      // Always attempt to clear cookie used by the session middleware;
-      try { res.clearCookie && res.clearCookie('connect.sid'); } catch (e) { /* ignore */ }
-
+      try { res.clearCookie && res.clearCookie('connect.sid'); } catch (e) {}
       if (err) {
         console.error('session destroy error', err);
         if (wantsJson(req)) return res.status(500).json({ ok: false, error: 'logout_failed' });
@@ -183,18 +173,11 @@ router.post('/logout', (req, res) => {
   }
 });
 
-/**
- * GET /api/me
- * Returns { ok:true, user: { id, username, name, email, role } } when logged in
- * Otherwise { ok: false }
- */
 router.get('/me', async (req, res) => {
   try {
     if (!req.session || !req.session.userId) return res.json({ ok: false });
-
-    const r = await pool.query('SELECT id, username, name, email, role FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
+    const r = await pool.query('SELECT id, username, role FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
     if (!r.rows[0]) return res.json({ ok: false });
-
     return res.json({ ok: true, user: safeUserRow(r.rows[0]) });
   } catch (err) {
     console.error('me error', err);

@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const getRawBody = require('raw-body');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5001;
@@ -13,12 +14,11 @@ app.use((req, res, next) => {
 });
 
 // --- DEBUG RAW BODY ROUTE ---
-// Must be placed BEFORE app.use(express.json()) so body-parser doesn't try to parse first.
-// This route will return the exact bytes the server receives.
+const rawBody = require('raw-body');
 app.post('/api/debug-raw', async (req, res) => {
   try {
     const len = req.headers['content-length'] ? parseInt(req.headers['content-length'], 10) : undefined;
-    const buf = await getRawBody(req, { length: len, limit: '1mb' });
+    const buf = await rawBody(req, { length: len, limit: '1mb' });
     const str = buf ? buf.toString('utf8') : '';
     return res.json({ ok: true, raw: str, length: buf ? buf.length : 0, headers: req.headers });
   } catch (err) {
@@ -28,12 +28,32 @@ app.post('/api/debug-raw', async (req, res) => {
 });
 // --- END DEBUG RAW BODY ROUTE ---
 
-// basic middleware
-app.use(cors()); // in production restrict origin
+// CORS: allow credentials (needed if frontend runs on different origin)
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow any origin for dev. Replace with specific origin in production.
+    cb(null, true);
+  },
+  credentials: true
+}));
 
-// Now install body parsers (after debug route)
+// body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// session middleware: MUST be before mounting routers that rely on req.session
+app.use(session({
+  name: process.env.SESSION_NAME || 'connect.sid',
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-this',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false,           // set true in production (HTTPS)
+    sameSite: 'lax',        // 'lax' is usually fine for same-site; use 'none' + secure for cross-site over HTTPS
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
 
 // JSON parse error handler: return JSON 400 instead of HTML stacktrace
 app.use((err, req, res, next) => {
@@ -54,7 +74,6 @@ app.use((err, req, res, next) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // mount API routers
-// auth router -> mount under /api so routes become /api/login, /api/register, /api/logout, /api/me
 try {
   const authRouter = require('./routes/auth');
   app.use('/api', authRouter);
@@ -63,7 +82,6 @@ try {
   console.warn('Auth router not found or failed to load:', e.message || e);
 }
 
-// mount other API routers (drive, search, uploads, etc.) if present
 try {
   app.use('/api', require('../server/drive'));
   console.log('Drive router mounted at /api');
