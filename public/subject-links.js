@@ -14,6 +14,11 @@
     return API_BASE.replace(/\/$/, '') + path;
   }
 
+  // Expose helper so other IIFEs can use it (fixes ReferenceError: apiUrl is not defined)
+  window.apiUrl = apiUrl;
+  window.FP = window.FP || {};
+  window.FP.apiUrl = apiUrl;
+
   /* ========================
       Helpers
       ======================== */
@@ -781,12 +786,15 @@
     async function callJson(url, opts={}) {
       try {
         opts = opts || {};
+        // default to include credentials so session cookies work
         opts.credentials = 'include';
         if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
           opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
           opts.body = JSON.stringify(opts.body);
         }
-        const res = await fetch(url, opts);
+        // if caller passed an absolute URL, use it; otherwise prefix with apiUrl()
+        const fullUrl = (/^https?:\/\//i).test(url) ? url : apiUrl(url);
+        const res = await fetch(fullUrl, opts);
         const txt = await res.text().catch(()=>null);
         try { return { ok: res.ok, status: res.status, json: txt ? JSON.parse(txt) : null, text: txt }; } catch(e) { return { ok: res.ok, status: res.status, json: null, text: txt }; }
       } catch (err) {
@@ -851,6 +859,7 @@
         const f = new FormData(LOGIN_FORM);
         const payload = { username: (f.get('username')||f.get('email')||''), password: f.get('password')||'' };
         const btn = LOGIN_FORM.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+        // use callJson with path; callJson prefixes API_BASE if set
         const r = await callJson('/api/login', { method: 'POST', body: payload });
         if (btn) btn.disabled = false;
         if (r.ok && r.json && r.json.ok) {
@@ -930,7 +939,9 @@
           opts.headers = Object.assign({}, opts.headers || {}, {'Content-Type':'application/json'});
           opts.body = JSON.stringify(opts.body);
         }
-        const res = await fetch(url, opts);
+        // ensure apiUrl prefix behavior for relative paths
+        const fullUrl = (/^https?:\/\//i).test(url) ? url : apiUrl(url);
+        const res = await fetch(fullUrl, opts);
         const text = await res.text().catch(()=>null);
         try { return { ok: res.ok, status: res.status, json: text ? JSON.parse(text) : null, text }; }
         catch(e){ return { ok: res.ok, status: res.status, json: null, text }; }

@@ -12,6 +12,51 @@
     .auth-box button { padding:8px 12px; border-radius:6px; cursor:pointer; }
   </style>
 </head>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('login-form');
+  if (!form) return;
+
+  // Prevent double handlers: remove inline action to avoid browser native submit if present
+  try { form.removeAttribute('action'); } catch(e){}
+
+  form.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+
+    const fd = new FormData(form);
+    const payload = {
+      username: (fd.get('username') || fd.get('email') || '').toString(),
+      password: (fd.get('password') || '').toString()
+    };
+
+    const apiPath = (typeof window.apiUrl === 'function') ? window.apiUrl('/api/login') : (window.API_BASE ? window.API_BASE.replace(/\/$/,'') + '/api/login' : '/api/login');
+
+    try {
+      const res = await fetch(apiPath, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await res.text().catch(()=>null);
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch(e) { json = null; }
+
+      if (res.ok && json && json.ok) {
+        // login ok -> reload or redirect
+        window.location.href = '/';
+      } else {
+        const errMsg = (json && json.error) ? json.error : (text || ('HTTP ' + res.status));
+        alert('Đăng nhập thất bại: ' + errMsg);
+      }
+    } catch (err) {
+      console.error('Login fetch error', err);
+      alert('Lỗi khi kết nối tới server: ' + (err && err.message ? err.message : String(err)));
+    }
+  }, { passive: false });
+});
+</script>
 <body>
   <header class="site-header">
     <div class="container header-inner">
@@ -46,7 +91,12 @@
   <footer class="site-footer">
     <div class="container"><small>© FP</small></div>
   </footer>
-
+<!-- Add this in <head> BEFORE subject-links.js (or any client script that calls apiUrl) -->
+<script>
+  // Nếu frontend và API cùng origin (chạy node server trên same host/port), để ''.
+  // Nếu frontend trên port khác khi dev (ví dụ live-server port 5500), set thành http://localhost:5001
+  window.API_BASE = window.API_BASE || 'http://localhost:5001';
+</script>
   <script src="subject-links.js"></script>
 </body>
 </html>

@@ -50,7 +50,12 @@
   <footer class="site-footer">
     <div class="container"><small>© FP</small></div>
   </footer>
-
+<!-- Add this in <head> BEFORE subject-links.js (or any client script that calls apiUrl) -->
+<script>
+  // Nếu frontend và API cùng origin (chạy node server trên same host/port), để ''.
+  // Nếu frontend trên port khác khi dev (ví dụ live-server port 5500), set thành http://localhost:5001
+  window.API_BASE = window.API_BASE || 'http://localhost:5001';
+</script>
   <script src="subject-links.js"></script>
 </body>
 </html>

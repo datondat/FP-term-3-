@@ -1,15 +1,7 @@
 'use strict';
 /**
  * server.js
- * Entry point (full file). Includes:
- * - cors, morgan, body parsers
- * - express-session (must come BEFORE mounting API routes that use req.session)
- * - mounts auth router (at /api and /api/auth) BEFORE other /api routers to ensure /api/login etc work
- * - serves static from /public, /uploads
- * - API 404 handler for unknown /api routes
- * - SPA fallback for non-API routes
- *
- * Replace your existing server.js with this file and restart the app.
+ * Entry point (full file).
  */
 
 const express = require('express');
@@ -40,22 +32,54 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 /**
- * Session middleware
- * MUST be before mounting API routes that rely on req.session.
- * In production, replace the default MemoryStore with a persistent store (redis/connect-pg).
+ * Graceful JSON parse error handler
+ * - Catches body-parser JSON parse errors (entity.parse.failed)
+ * - If content-type is NOT JSON, swallow the error and continue so urlencoded parser can handle it
+ * - If content-type IS JSON and parse failed, return 400 with a helpful message
+ * Place this AFTER express.json()/urlencoded() but BEFORE your routers.
  */
-app.use(session({
-  name: process.env.SESSION_NAME || 'connect.sid',
-  secret: process.env.SESSION_SECRET || 'replace-this-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: process.env.COOKIE_SAMESITE || 'lax', // 'lax' is safe for most
-    secure: (process.env.NODE_ENV === 'production'), // secure cookies in prod (HTTPS)
-    maxAge: 7 * 24 * 60 * 60 * 1000
+app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') {
+    // Log concise info + original url
+    console.warn('JSON parse failed for %s %s: %s', req.method, req.originalUrl, err.message);
+
+    const ct = (req.headers['content-type'] || '').toLowerCase();
+    const isJson = ct.indexOf('application/json') !== -1 || ct.indexOf('+json') !== -1;
+
+    if (!isJson) {
+      // If client didn't claim JSON, ignore parse error and continue.
+      // Ensure req.body is at least an empty object so later code doesn't break.
+      req.body = req.body || {};
+      return next();
+    }
+
+    // If client did claim JSON, respond with 400 Bad Request and helpful JSON
+    return res.status(400).json({ ok: false, error: 'invalid_json', message: err.message });
   }
-}));
+  // Not a parse error — pass along
+  next(err);
+});
+
+/**
+ * CSP middleware (configurable via env CSP_CONNECT_SRC)
+ * (Optional but useful for dev — adjust for production.)
+ */
+app.use((req, res, next) => {
+  const connectSrcList = (process.env.CSP_CONNECT_SRC || "http://localhost:5001 'self'").trim();
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    "style-src 'self' 'unsafe-inline' https:",
+    "img-src 'self' data: https:",
+    `connect-src ${connectSrcList}`,
+    "font-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; ');
+  res.setHeader('Content-Security-Policy', csp);
+  next();
+});
 
 // Serve public files (static) and uploads
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -66,89 +90,55 @@ if (fs.existsSync(PUBLIC_DIR)) {
   console.warn('Warning: public directory not found:', PUBLIC_DIR);
 }
 
-// Mount auth router EARLY under /api so endpoints /api/login, /api/logout, /api/me work
+// Mount auth router EARLY under /api so endpoints /api/login etc work
 const mounted = [];
 try {
   const authRouter = require('./src/routes/auth');
-  // Mount at both /api and /api/auth for compatibility
   app.use('/api', authRouter);
   app.use('/api/auth', authRouter);
   mounted.push('/api (auth), /api/auth (auth)');
 } catch (e) {
-  console.warn('auth router not mounted:', e && e.message ? e.message : e);
+  console.error('auth router not mounted (full error):', e && e.stack ? e.stack : e);
 }
 
-// Other routers (mount after auth so auth routes take precedence)
+// Other routers (comments, search, uploads, classSubjects, admin)...
 try {
   const commentsRouter = require('./src/routes/comments');
   app.use('/api/comments', commentsRouter);
   mounted.push('/api/comments');
-} catch (e) {
-  console.warn('comments router not mounted:', e && e.message ? e.message : e);
-}
+} catch (e) { console.warn('comments router not mounted:', e && e.message ? e.message : e); }
 try {
   const searchRouter = require('./src/routes/search');
-  app.use('/api', searchRouter); // search endpoints under /api/*
+  app.use('/api', searchRouter);
   mounted.push('/api (search)');
-} catch (e) {
-  console.warn('search router not mounted:', e && e.message ? e.message : e);
-}
-
-// uploads router (optional)
+} catch (e) { console.warn('search router not mounted:', e && e.message ? e.message : e); }
 try {
   const uploadsRouter = require('./src/routes/uploads');
   app.use('/api/uploads', uploadsRouter);
   mounted.push('/api/uploads');
-} catch (e) {
-  console.warn('uploads router not mounted:', e && e.message ? e.message : e);
-}
-
-// classSubjects router
+} catch (e) { console.warn('uploads router not mounted:', e && e.message ? e.message : e); }
 try {
   const classSubjectsRouter = require('./src/routes/classSubjects');
   app.use('/api/classes', classSubjectsRouter);
   mounted.push('/api/classes');
-} catch (e) {
-  console.warn('classSubjects router not mounted:', e && e.message ? e.message : e);
-}
-
-// Admin router (added)
+} catch (e) { console.warn('classSubjects router not mounted:', e && e.message ? e.message : e); }
 try {
   const adminRouter = require('./src/routes/admin');
   app.use('/api/admin', adminRouter);
   mounted.push('/api/admin');
-} catch (e) {
-  console.warn('admin router not mounted:', e && e.message ? e.message : e);
-}
+} catch (e) { console.warn('admin router not mounted:', e && e.message ? e.message : e); }
 
 console.log('Mounted routers:', mounted.length ? mounted.join(', ') : '(none)');
 
-// Lightweight health endpoints
+// health endpoints...
 app.get('/api/ping', (req, res) => {
-  res.json({
-    ok: true,
-    now: new Date().toISOString(),
-    pid: process.pid,
-    mounted
-  });
+  res.json({ ok: true, now: new Date().toISOString(), pid: process.pid, mounted });
 });
-
 app.get('/api/info', (req, res) => {
-  res.json({
-    ok: true,
-    env: {
-      node_env: process.env.NODE_ENV || 'development',
-      database_url_set: !!process.env.DATABASE_URL,
-      port: process.env.PORT || null
-    },
-    mounted
-  });
+  res.json({ ok: true, env: { node_env: process.env.NODE_ENV || 'development', database_url_set: !!process.env.DATABASE_URL, port: process.env.PORT || null }, mounted });
 });
 
-/**
- * If a request starts with /api/ and no route matched, return JSON 404 here.
- * This prevents SPA fallback from returning index.html for API calls.
- */
+// API 404 handler for /api/*
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: `No ${req.method} ${req.originalUrl}` });
@@ -156,9 +146,7 @@ app.use((req, res, next) => {
   next();
 });
 
-/**
- * SPA fallback - serve index.html for non-API routes
- */
+// SPA fallback...
 app.get('*', (req, res) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: 'Not Found' });
@@ -168,9 +156,7 @@ app.get('*', (req, res) => {
   return res.status(404).send('Not Found');
 });
 
-/**
- * Error handler
- */
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
   if (res.headersSent) return next(err);
@@ -203,5 +189,4 @@ function shutdown(signal) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-// export app for tests
 module.exports = app;
