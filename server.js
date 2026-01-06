@@ -112,6 +112,15 @@ try {
   console.warn('classSubjects router not mounted:', e && e.message ? e.message : e);
 }
 
+// Admin router (added)
+try {
+  const adminRouter = require('./src/routes/admin');
+  app.use('/api/admin', adminRouter);
+  mounted.push('/api/admin');
+} catch (e) {
+  console.warn('admin router not mounted:', e && e.message ? e.message : e);
+}
+
 console.log('Mounted routers:', mounted.length ? mounted.join(', ') : '(none)');
 
 // Lightweight health endpoints

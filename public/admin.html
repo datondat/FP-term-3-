@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin — FP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="main.css">
+  <style>
+    .container { max-width:1000px; margin:20px auto; padding:12px; }
+    .panel { background:#fff; border:1px solid #eee; padding:12px; border-radius:8px; margin-bottom:12px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:8px; border-bottom:1px solid #f0f0f0; text-align:left; }
+    .btn { padding:6px 10px; border-radius:6px; cursor:pointer; background:#f3f3f3; border:1px solid #ddd; }
+    .btn-danger { background:#fdd; border-color:#f99; }
+    .muted { color:#666; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="branding"><a href="/" class="logo">FP</a></div>
+      <nav class="site-nav" id="nav">
+        <a href="/" class="nav-link">Trang chủ</a>
+        <a href="#" id="link-logout" class="nav-link" style="display:none">Đăng xuất</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Admin panel</h1>
+
+    <section class="panel" id="upload-panel">
+      <h3>Tải file lên</h3>
+      <form id="admin-upload-form" enctype="multipart/form-data">
+        <input type="file" name="file" id="admin-file" required />
+        <button type="submit" class="btn">Upload</button>
+      </form>
+      <div id="upload-result" style="margin-top:8px;color:#333"></div>
+      <h4 style="margin-top:12px">Danh sách file đã upload</h4>
+      <div id="uploads-list"></div>
+    </section>
+
+    <section class="panel" id="comments-panel">
+      <h3>Quản lý bình luận</h3>
+      <div id="comments-list"></div>
+    </section>
+  </main>
+
+  <script src="subject-links.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

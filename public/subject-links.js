@@ -533,7 +533,6 @@
       gs.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter') {
           ev.preventDefault();
-          // dispatch event so the filter UI will handle (we use single "Lọc" action)
           document.dispatchEvent(new Event('fp:doFilter'));
         }
       });
