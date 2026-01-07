@@ -76,9 +76,7 @@ router.get('/uploads', ensureAdmin, async (req, res) => {
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
-
-// Upload file (multipart/form-data, field name 'file')
-router.post('/upload', ensureAdmin, upload.single('file'), async (req, res) => {
+router.post('/uploads', ensureAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'no_file' });
     const relPath = path.posix.join('/uploads', req.file.filename);
@@ -90,11 +88,30 @@ router.post('/upload', ensureAdmin, upload.single('file'), async (req, res) => {
     const r = await pool.query(sql, values);
     return res.json({ ok: true, file: r.rows[0] });
   } catch (err) {
-    console.error('POST /admin/upload error', err);
+    console.error('POST /admin/uploads error', err && err.stack ? err.stack : err);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
 
+// Delete upload by id (client expects DELETE /api/admin/uploads/:id)
+router.delete('/uploads/:id', ensureAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    // fetch stored path
+    const r = await pool.query('SELECT path FROM uploads WHERE id = $1 LIMIT 1', [id]);
+    if (!r.rows.length) return res.status(404).json({ ok: false, error: 'not_found' });
+    const fileRelPath = r.rows[0].path || '';
+    const filePath = path.join(PUBLIC_DIR, fileRelPath);
+    // delete DB record
+    await pool.query('DELETE FROM uploads WHERE id = $1', [id]);
+    // remove file from disk if present
+    try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { console.warn('Failed to remove file:', filePath, e && e.message ? e.message : e); }
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /admin/uploads/:id error', err && err.stack ? err.stack : err);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
 // List comments
 router.get('/comments', ensureAdmin, async (req, res) => {
   try {

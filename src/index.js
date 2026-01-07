@@ -114,7 +114,23 @@ try {
   app.use('/api/classes', classSubjectsRouter);
   console.log('Classes router mounted at /api/classes');
 } catch (e) {}
+// CHÈN VÀO src/index.js tại vị trí ngay trước app.get('*') (trước dòng ~124)
+try {
+  // Mount admin router if present so /api/admin is available
+  const adminRouter = require('./routes/admin');
+  app.use('/api/admin', adminRouter);
+  console.log('Admin router mounted at /api/admin');
+} catch (e) {
+  console.warn('Admin router not mounted (./routes/admin):', e && (e.message || e));
+}
 
+// API 404 handler: ensure /api/* that don't match return JSON 404 (avoid SPA HTML)
+app.use((req, res, next) => {
+  if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
+    return res.status(404).json({ ok: false, error: `No ${req.method} ${req.originalUrl}` });
+  }
+  next();
+});
 // API health / ping (useful for tests)
 app.get('/api/ping', (_req, res) => res.json({ ok: true, now: new Date().toISOString() }));
 
