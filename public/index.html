@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="container header-inner">
+    <div class="container header-inner" style="align-items:center;">
       <div style="display:flex;align-items:center;gap:12px;">
         <a href="/" class="logo">FP</a>
         <div class="site-sub">Hệ thống học tập</div>
@@ -18,26 +18,24 @@
         <input id="global-search" type="search" placeholder="Tìm môn hoặc tài liệu (nhấn Enter)" />
       </div>
 
-      <nav class="site-nav" id="nav">
-        <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
-        <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
-        <a href="#" id="link-logout" class="nav-link" style="display:none">Đăng xuất</a>
-      </nav>
+      <!-- auth area unchanged -->
+      <div id="auth-area" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+        <a id="link-register" class="nav-link" href="register.html">Đăng ký</a>
+        <a id="link-login" class="nav-link" href="login.html">Đăng nhập</a>
+        <a id="link-logout" class="nav-link" href="#" style="display:none">Đăng xuất</a>
+      </div>
     </div>
   </header>
 
   <main class="container">
     <section class="card">
       <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;">
-        <div>
-          <h3 style="margin:0">Danh sách khối</h3>
-        </div>
+        <div><h3 style="margin:0">Danh sách khối</h3></div>
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-          <button id="back-all" class="btn-ghost" title="Quay lại tất cả">Quay lại tất cả</button>
+          <button id="back-all" class="btn-ghost" title="Quay lại">Quay lại</button>
         </div>
       </div>
 
-      <!-- Flat grid of grade panels -->
       <div id="grades-area" class="cards-grid grades-wrapper" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
         <div class="grade-panel" data-grade="6">
           <div class="grade-title">Lớp 6</div>
@@ -80,227 +78,229 @@
         </div>
       </div>
     </section>
-
-    <!-- Subject detail card (hidden until a subject is selected) -->
-    <section id="subject-detail-card" class="card" style="display:none">
-      <div class="flex-space">
-        <div>
-          <h3 id="subject-detail-title">Môn</h3>
-          <div id="subject-detail-meta" class="small muted"></div>
-        </div>
-        <div>
-          <button id="back-to-grade" class="btn-ghost">Quay lại</button>
-        </div>
-      </div>
-      <div id="subject-detail-body" style="margin-top:12px">
-        <!-- subject info inserted here -->
-      </div>
-    </section>
-
   </main>
 
+  <div id="archived-raw-lists" aria-hidden="true" style="display:none"></div>
+
   <footer class="site-footer">
-    <div class="container">
-      <small>© FP — Hệ thống học tập</small>
-    </div>
+    <div class="container"><small>© FP — Hệ thống học tập</small></div>
   </footer>
 
-<script>
-  window.API_BASE = window.API_BASE || 'http://localhost:5001';
-</script>
-
+<script>window.API_BASE = window.API_BASE || 'http://localhost:5001';</script>
 <script src="subject-links.js"></script>
 
-<!-- Compact file-grid renderer: run after subject-links.js -->
-<script>
-/* Normalize and render file links as compact grid buttons.
-   Run after subject-links.js has populated panels. Safe to call multiple times. */
-(function renderCompactFileButtons(){
-  const FILE_EXT_RE = /\.(pdf|docx?|pptx?|xlsx?)$/i;
-
-  document.querySelectorAll('.grade-panel').forEach(panel => {
-    // 1) Collect existing anchors that look like file links (href ends with file ext or text includes extension)
-    const anchors = Array.from(panel.querySelectorAll('a')).filter(a => {
-      const href = (a.getAttribute('href') || '').trim();
-      const txt = (a.textContent || '').trim();
-      return FILE_EXT_RE.test(href) || FILE_EXT_RE.test(txt);
-    });
-
-    // 2) Collect plain-text filenames inside panel (fallback)
-    const textMatches = [];
-    Array.from(panel.querySelectorAll('*')).forEach(node => {
-      if (node.children.length === 0) {
-        const t = (node.textContent || '').trim();
-        if (!t) return;
-        const m = t.match(new RegExp('([^\\n\\r]+?\\.(?:pdf|docx?|pptx?|xlsx?))','gi'));
-        if (m && m.length) {
-          m.forEach(x => {
-            const s = x.trim();
-            const exists = anchors.some(a => (a.textContent||'').trim() === s);
-            if (!exists) textMatches.push(s);
-          });
-        }
-      }
-    });
-
-    if (anchors.length === 0 && textMatches.length === 0) {
-      return;
-    }
-
-    const existingGrid = panel.querySelector('.file-grid');
-    if (existingGrid) existingGrid.remove();
-
-    const grid = document.createElement('div');
-    grid.className = 'file-grid';
-
-    const makeLinkItem = (href, label) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'file-grid-item';
-      const a = document.createElement('a');
-      a.href = href;
-      a.textContent = label;
-      a.title = label;
-      a.classList.add('btn-file');
-      wrap.appendChild(a);
-      return wrap;
-    };
-
-    anchors.forEach(a => {
-      const href = a.getAttribute('href') || ('/file.html?name=' + encodeURIComponent((a.textContent||'').trim()));
-      const label = (a.textContent||'').trim().slice(0,40);
-      const item = makeLinkItem(href, label);
-      grid.appendChild(item);
-    });
-
-    textMatches.forEach(name => {
-      const href = '/file.html?name=' + encodeURIComponent(name);
-      const label = name.length > 40 ? name.slice(0,37) + '...' : name;
-      grid.appendChild(makeLinkItem(href, label));
-    });
-
-    // Insert grid into panel
-    const headings = Array.from(panel.querySelectorAll('strong, h3, h4, div')).filter(el => /file\s*từ\s*drive|liên\s*kết\s*tài\s*liệu/i.test((el.textContent||'')));
-    if (headings.length) {
-      headings[0].insertAdjacentElement('afterend', grid);
-    } else {
-      panel.appendChild(grid);
-    }
-
-    // Remove raw anchors/text nodes that matched filenames to avoid duplication
-    anchors.forEach(a => { try { a.remove(); } catch(e){} });
-    Array.from(panel.querySelectorAll('*')).forEach(node => {
-      if (node.children.length === 0) {
-        const t = (node.textContent || '').trim();
-        if (t && FILE_EXT_RE.test(t)) {
-          node.remove();
-        }
-      }
-    });
-
-  });
-})();
-</script>
-
+<!-- Fix script: remove header filters, keep pill buttons inside panels, restore UI panel click behavior -->
 <script>
 (function(){
-  const gradesArea = document.getElementById('grades-area');
-  const panels = Array.from(document.querySelectorAll('.grade-panel'));
-  const subjectDetailCard = document.getElementById('subject-detail-card');
-  const subjectDetailTitle = document.getElementById('subject-detail-title');
-  const subjectDetailMeta = document.getElementById('subject-detail-meta');
-  const subjectDetailBody = document.getElementById('subject-detail-body');
-  const backBtn = document.getElementById('back-to-grade');
-  const backAllBtn = document.getElementById('back-all');
+  const FILE_EXT_RE = /\.(pdf|docx?|pptx?|xlsx?|xls)$/i;
+  const HOC10_RE = /hoc10|hoc10vn|hoc10\.vn/i;
+  const ARCHIVE_ID = 'archived-raw-lists';
 
-  function clearGradeSelection() {
-    panels.forEach(p => {
-      p.classList.remove('grade-selected');
-      p.classList.remove('hidden');
-      const ul = p.querySelector('.subject-list');
-      if (ul) ul.classList.remove('show-subjects');
-    });
-    subjectDetailCard.style.display = 'none';
+  function textOf(n){ return (n && n.textContent) ? n.textContent.trim() : ''; }
+  function anchorsIn(node){ return node ? Array.from(node.querySelectorAll('a')).filter(a => textOf(a)) : []; }
+  function isAllowed(a){
+    try{
+      const href = (a.getAttribute('href')||'').trim();
+      const txt = textOf(a);
+      if(HOC10_RE.test(href) || HOC10_RE.test(txt)) return true;
+      if(FILE_EXT_RE.test(href)) return true;
+      if(href.includes('/file.html')) return true;
+      return false;
+    }catch(e){ return false; }
   }
 
-  panels.forEach(panel => {
-    panel.addEventListener('click', (ev) => {
-      // ignore clicks on links
-      if (ev.target && (ev.target.tagName === 'A' || ev.target.closest('a'))) return;
-      panels.forEach(p => { if (p !== panel) p.classList.add('hidden'); });
-      panel.classList.add('grade-selected');
-      const ul = panel.querySelector('.subject-list');
-      if (ul) ul.classList.add('show-subjects');
-      subjectDetailCard.style.display = 'none';
-      panel.scrollIntoView({behavior:'smooth', block:'start'});
+  // -------- header filter removal --------
+  function removeHeaderFilters(){
+    const header = document.querySelector('.header-inner');
+    if(!header) return;
+    header.querySelectorAll('select, button, [role="button"]').forEach(el=>{
+      try{
+        const txt = (el.getAttribute('aria-label')||'') + ' ' + (el.getAttribute('title')||'') + ' ' + (el.textContent||'');
+        if(/Khối|Môn|Lọc/i.test(txt) || el.tagName === 'SELECT') el.remove();
+      }catch(e){}
     });
-  });
+    // remove known classes too
+    header.querySelectorAll('.filter-controls, .filter-group, .header-filter').forEach(e=>e.remove());
+  }
 
-  gradesArea.addEventListener('click', (ev) => {
-    const a = ev.target.closest('a');
-    if (a) {
-      if (a.getAttribute('href') && a.getAttribute('href').includes('/file.html')) {
-        a.classList.add('btn-file');
-        return; // allow navigation
+  // ensure header filters are removed now and whenever DOM changes
+  const headerObserver = new MutationObserver(()=>{ clearTimeout(window.__hdrDeb); window.__hdrDeb = setTimeout(removeHeaderFilters, 100); });
+  headerObserver.observe(document.body, { childList:true, subtree:true });
+  removeHeaderFilters();
+
+  // -------- find short-links container inside a panel (immediately after .grade-title) --------
+  function findShortLinksInPanel(panel){
+    const title = panel.querySelector('.grade-title');
+    if(title){
+      let el = title.nextElementSibling;
+      let tries = 0;
+      while(el && tries < 8){
+        if(anchorsIn(el).length > 0) return el;
+        el = el.nextElementSibling; tries++;
       }
     }
-    const subjectLi = ev.target.closest('li, .subject-item');
-    if (!subjectLi) return;
-    ev.preventDefault();
-    const subjectName = subjectLi.dataset.subject || subjectLi.textContent.trim();
-    const panel = subjectLi.closest('.grade-panel');
-    const grade = panel && panel.dataset.grade ? panel.dataset.grade : '';
-    panels.forEach(p => {
-      if (p !== panel) p.classList.add('hidden');
-      const ul = p.querySelector('.subject-list');
-      if (ul) ul.classList.remove('show-subjects');
-    });
-    subjectDetailTitle.textContent = subjectName;
-    subjectDetailMeta.textContent = 'Khối: ' + (grade || '—');
-    const insideLinks = Array.from(subjectLi.querySelectorAll('a'));
-    subjectDetailBody.innerHTML = '';
-    if (insideLinks.length) {
-      insideLinks.forEach(link => {
-        const clone = link.cloneNode(true);
-        clone.classList.add('btn-file');
-        clone.style.display = 'inline-block';
-        clone.style.marginRight = '8px';
-        subjectDetailBody.appendChild(clone);
-      });
-    } else {
-      subjectDetailBody.innerHTML = '<div class="muted">Không có tài liệu trực tiếp cho môn này.</div>';
+    // fallback: any node inside panel with 1..8 anchors and short avg length
+    const nodes = Array.from(panel.querySelectorAll('div,p,ul,ol,section'));
+    for(const n of nodes){
+      const aEls = anchorsIn(n);
+      if(aEls.length >=1 && aEls.length <=8){
+        const avg = aEls.reduce((s,a)=>s + textOf(a).length, 0) / aEls.length;
+        if(avg <= 120) return n;
+      }
     }
-    subjectDetailCard.style.display = 'block';
-    subjectDetailCard.scrollIntoView({behavior:'smooth', block:'start'});
-  });
+    return null;
+  }
 
-  backBtn.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    const sel = document.querySelector('.grade-panel.grade-selected');
-    if (!sel) { clearGradeSelection(); return; }
-    subjectDetailCard.style.display = 'none';
-    panels.forEach(p => { if (p !== sel) p.classList.add('hidden'); });
-    const ul = sel.querySelector('.subject-list');
-    if (ul) ul.classList.add('show-subjects');
-    sel.scrollIntoView({behavior:'smooth', block:'start'});
-  });
+  // -------- build pill buttons inside panel (clone-only) --------
+  function buildPillsForPanel(panel){
+    // remove existing pills for idempotency
+    const existing = panel.querySelector('.file-grid-pill');
+    if(existing) existing.remove();
 
-  backAllBtn.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    panels.forEach(p => p.classList.remove('hidden', 'grade-selected'));
-    document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
-    subjectDetailCard.style.display = 'none';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+    const short = findShortLinksInPanel(panel);
+    if(!short) return;
 
-  const logo = document.querySelector('.logo');
-  if (logo) logo.addEventListener('click', (e) => {
-    panels.forEach(p => p.classList.remove('hidden', 'grade-selected'));
-    document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
-    subjectDetailCard.style.display = 'none';
-  });
+    // collect allowed anchors: first from short, then others in panel
+    const collected = [];
+    anchorsIn(short).forEach(a => { if(isAllowed(a)) collected.push(a); });
+    anchorsIn(panel).forEach(a => { if(isAllowed(a) && !collected.includes(a)) collected.push(a); });
 
-  window.FP_UI = { reset: clearGradeSelection };
+    if(collected.length === 0) return;
 
+    const wrapper = document.createElement('div');
+    wrapper.className = 'file-grid-pill';
+    wrapper.style.display='flex';
+    wrapper.style.flexWrap='wrap';
+    wrapper.style.gap='10px';
+    wrapper.style.marginTop='12px';
+
+    collected.forEach(a => {
+      const clone = a.cloneNode(true);
+      const label = textOf(clone) || (clone.getAttribute('href')||'');
+      if(label.length > 50) clone.textContent = label.slice(0,47) + '...';
+      clone.classList.add('btn-file');
+      // minimal inline fallback styling (CSS provides main look)
+      clone.style.padding='6px 12px';
+      clone.style.borderRadius='999px';
+      clone.style.border='1px solid rgba(11,121,208,0.12)';
+      clone.style.background='var(--primary, #0b79d0)';
+      clone.style.color='#fff';
+      clone.style.fontWeight='700';
+      clone.style.textDecoration='none';
+      wrapper.appendChild(clone);
+    });
+
+    short.insertAdjacentElement('afterend', wrapper);
+  }
+
+  // -------- archive/move long raw lists (only inside panel, after short-links) --------
+  function archiveLongLists(panel){
+    const archive = document.getElementById(ARCHIVE_ID);
+    if(!archive) return;
+    const short = findShortLinksInPanel(panel);
+    if(!short) return;
+    let el = short.nextElementSibling;
+    while(el){
+      // stop if reach subject-list or pill wrapper
+      if(el.classList && (el.classList.contains('subject-list') || el.classList.contains('file-grid-pill') || el.classList.contains('subject-inline-detail'))) break;
+      try{
+        const aCount = anchorsIn(el).length;
+        if(aCount >= 5){
+          archive.appendChild(el);
+          // reset el to the next sibling of short (because we removed current)
+          el = short.nextElementSibling;
+          continue;
+        }
+      }catch(e){}
+      el = el.nextElementSibling;
+    }
+  }
+
+  function processPanel(panel){
+    buildPillsForPanel(panel);
+    archiveLongLists(panel);
+  }
+
+  // Run on single panel when it becomes selected
+  function onOpenPanel(panel){
+    processPanel(panel);
+  }
+
+  // -------- Recreate panel open/close behavior (minimal, safe) --------
+  function initPanelUI(){
+    const panels = Array.from(document.querySelectorAll('.grade-panel'));
+    panels.forEach(panel=>{
+      // Prevent multiple binding
+      if(panel.dataset.uiBound === '1') return;
+      panel.dataset.uiBound = '1';
+
+      panel.addEventListener('click', function(ev){
+        // if clicked a link, let link behavior happen
+        if(ev.target && (ev.target.tagName === 'A' || ev.target.closest('a'))) return;
+        // open this panel
+        panels.forEach(p => { if(p !== panel) p.classList.add('hidden'); });
+        panel.classList.add('grade-selected');
+        const ul = panel.querySelector('.subject-list');
+        if(ul) ul.classList.add('show-subjects');
+        // build pills & archive inside this panel
+        onOpenPanel(panel);
+        panel.scrollIntoView({behavior:'smooth', block:'start'});
+      }, false);
+    });
+  }
+
+  // Back-all / logo restore behavior
+  function initBackAndLogo(){
+    const backAll = document.getElementById('back-all');
+    const panels = Array.from(document.querySelectorAll('.grade-panel'));
+    if(backAll && !backAll.dataset.bound){
+      backAll.addEventListener('click', function(ev){
+        ev.preventDefault();
+        // remove pill wrappers (we only created clones)
+        document.querySelectorAll('.file-grid-pill').forEach(g => g.remove());
+        // show panels
+        panels.forEach(p => p.classList.remove('hidden','grade-selected'));
+        document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
+        window.scrollTo({top:0,behavior:'smooth'});
+      });
+      backAll.dataset.bound = '1';
+    }
+
+    const logo = document.querySelector('.logo');
+    if(logo && !logo.dataset.bound){
+      logo.addEventListener('click', function(){
+        document.querySelectorAll('.file-grid-pill').forEach(g => g.remove());
+        panels.forEach(p => p.classList.remove('hidden','grade-selected'));
+        document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
+        window.scrollTo({top:0,behavior:'smooth'});
+      });
+      logo.dataset.bound = '1';
+    }
+  }
+
+  // initialize UI and observers
+  function init(){
+    initPanelUI();
+    initBackAndLogo();
+    // run process for any panels already visible initially
+    document.querySelectorAll('.grade-panel').forEach(p => { /* no auto archive until clicked */ });
+
+    // Observe for new panels/DOM changes (subject-links.js injection) to re-bind UI and remove header filters
+    const mo = new MutationObserver(()=>{ 
+      clearTimeout(window.__uiDeb);
+      window.__uiDeb = setTimeout(()=>{ removeHeaderFilters(); initPanelUI(); initBackAndLogo(); }, 120);
+    });
+    mo.observe(document.body, { childList:true, subtree:true });
+
+    // initial removal of header filters (in case injected earlier)
+    removeHeaderFilters();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  // Expose debug helpers
+  window.__fp_ui = { processPanel, archivedCount: ()=> document.getElementById(ARCHIVE_ID)?.children.length || 0 };
 })();
 </script>
 </body>
