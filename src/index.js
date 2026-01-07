@@ -129,6 +129,16 @@ try {
   console.warn('Admin router not mounted (./routes/admin):', e && (e.message || e));
 }
 
+// Serve admin.html for /admin and any /admin/* route so client admin UI loads
+app.get(['/admin', '/admin/*'], (req, res) => {
+  try {
+    res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
+  } catch (e) {
+    console.error('Failed to send admin.html', e && (e.stack || e));
+    res.status(500).send('server error');
+  }
+});
+
 // API 404 handler: ensure /api/* that don't match route return JSON 404 (avoid SPA HTML)
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
@@ -137,9 +147,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// fallback to SPA: must be after API mounts
+// fallback to SPA: must be after API mounts and admin route
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
