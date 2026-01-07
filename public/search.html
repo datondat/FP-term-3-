@@ -1,40 +1,33 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
   <title>Tìm kiếm — FP</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/main.css">
   <style>
-    .search-panel{max-width:1100px;margin:20px auto;padding:16px;background:#fff;border-radius:8px;border:1px solid #eee}
-    .row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-    .row > * {flex:1}
-    .row .small {flex:0 0 160px}
-    .btn {padding:8px 12px;border-radius:6px;background:#c94;color:#fff;text-decoration:none;border:0;cursor:pointer}
-    .btn-ghost{padding:8px 12px;border-radius:6px;background:#fff;border:1px solid #ddd;color:#333}
+    /* small page-specific rules */
     .results{max-width:1100px;margin:16px auto}
-    .result{background:#fff;border:1px solid #eee;border-radius:8px;padding:12px;margin-bottom:8px}
-    .muted{color:#666}
     .filters{display:flex;gap:8px;flex-wrap:wrap}
     @media (max-width:720px){ .row{flex-direction:column} .row > *{width:100%} }
   </style>
 </head>
 <body>
-  <div style="padding:12px">
-    <a href="/" class="btn btn-ghost" style="background:#eee;color:#333;margin-bottom:12px;display:inline-block">← Trang chủ</a>
+  <div class="container" style="padding:12px">
+    <a href="/" class="back-btn" style="display:inline-block;margin-bottom:12px">← Trang chủ</a>
 
     <div class="search-panel" role="search">
       <h2 style="margin-top:0">Tìm kiếm nâng cao</h2>
       <form id="search-form" onsubmit="return false;">
         <div class="row">
-          <input id="q" placeholder="Từ khoá tìm kiếm (nhấn Enter hoặc bấm Tìm)" autocomplete="off" />
+          <input id="q" class="form-input" placeholder="Từ khoá tìm kiếm (nhấn Enter hoặc b���m Tìm)" autocomplete="off" />
           <button id="do-search" class="btn small">Tìm</button>
         </div>
 
         <div class="row filters" style="align-items:flex-end">
           <div class="small">
             <label for="grade">Khối / Lớp</label>
-            <select id="grade">
+            <select id="grade" class="form-input">
               <option value="">Tất cả</option>
               <option value="6">Lớp 6</option>
               <option value="7">Lớp 7</option>
@@ -48,7 +41,7 @@
 
           <div style="flex:1">
             <label for="subject">Môn (tùy chọn)</label>
-            <select id="subject">
+            <select id="subject" class="form-input">
               <option value="">Tất cả</option>
             </select>
           </div>
@@ -77,166 +70,6 @@
     const selSubject = $('subject');
     const btnSearch = $('do-search');
     const btnClear = $('clear-filters');
-    const btnReset = $('advanced-toggle');
-    const resultsEl = $('results');
-    const infoEl = $('results-info');
-
-    // SUBJECTS map source: window.FP.subjectLinks if available (same shape used elsewhere)
-    const SUBJECTS_MAP = (window.FP && window.FP.subjectLinks) ? window.FP.subjectLinks : null;
-    const FALLBACK = {
-      6:['Toán','Ngữ văn','Tiếng Anh','Tin học'],
-      7:['Toán','Ngữ văn','Tiếng Anh'],
-      8:['Toán','Ngữ văn','Tiếng Anh'],
-      9:['Toán','Ngữ văn','Tiếng Anh'],
-      10:['Toán','Ngữ văn','Tiếng Anh'],
-      11:['Toán','Ngữ văn','Tiếng Anh'],
-      12:['Toán','Ngữ văn','Tiếng Anh']
-    };
-
-    function populateSubjectsForGrade(grade) {
-      selSubject.innerHTML = '<option value="">Tất cả</option>';
-      if (!grade) return;
-      let arr = [];
-      if (SUBJECTS_MAP && SUBJECTS_MAP[grade]) {
-        arr = Object.keys(SUBJECTS_MAP[grade]).slice().sort();
-      } else {
-        arr = FALLBACK[grade] ? FALLBACK[grade].slice() : [];
-      }
-      arr.forEach(s => {
-        const o = document.createElement('option');
-        o.value = s; o.textContent = s;
-        selSubject.appendChild(o);
-      });
-    }
-
-    // Init from query params
-    function initFromParams() {
-      const q0 = param('q') || '';
-      const g0 = param('grade') || '';
-      const s0 = param('subject') || '';
-      inputQ.value = q0;
-      if (g0) selGrade.value = g0;
-      populateSubjectsForGrade(selGrade.value || '');
-      if (s0) {
-        // ensure option exists
-        let found = Array.from(selSubject.options).find(x=>x.value===s0);
-        if (!found) {
-          const op = document.createElement('option'); op.value = s0; op.textContent = s0; selSubject.appendChild(op);
-        }
-        selSubject.value = s0;
-      }
-    }
-
-    // Build API URL
-    function buildSearchUrl(q, grade, subject, page=1, limit=30) {
-      const params = new URLSearchParams();
-      params.set('q', q);
-      params.set('page', String(page));
-      params.set('limit', String(limit));
-      if (grade) params.set('grade', grade);
-      if (subject) params.set('subject', subject);
-      const base = (window.API_BASE ? window.API_BASE.replace(/\/$/,'') : '');
-      return (base ? base : '') + '/api/search?' + params.toString();
-    }
-
-    // Render results
-    function renderResults(json) {
-      resultsEl.innerHTML = '';
-      const total = json.total || 0;
-      infoEl.textContent = `Kết quả: ${total} — hiển thị trang 1`;
-      if (!json.results || !json.results.length) {
-        resultsEl.innerHTML = '<div class="muted" style="padding:12px">Không tìm thấy kết quả.</div>';
-        return;
-      }
-      const frag = document.createDocumentFragment();
-      json.results.forEach(it => {
-        const box = document.createElement('div'); box.className = 'result';
-        const titleDiv = document.createElement('div'); titleDiv.style.fontWeight='700'; titleDiv.style.marginBottom='6px';
-        let href = null;
-        if (it.url) {
-          if (/^https?:\/\//i.test(it.url)) href = it.url;
-          else href = '/file.html?id=' + encodeURIComponent(it.url) + (it.title ? '&name=' + encodeURIComponent(it.title) : '');
-        }
-        if (href) {
-          const a = document.createElement('a'); a.href = href; a.target = '_blank'; a.rel = 'noopener';
-          a.textContent = it.title || it.filename || 'Tài liệu';
-          titleDiv.appendChild(a);
-        } else {
-          titleDiv.textContent = it.title || it.filename || 'Không tên';
-        }
-        box.appendChild(titleDiv);
-
-        const meta = document.createElement('div'); meta.className='muted';
-        const parts = [];
-        if (it.subjectId) parts.push('Môn ID: ' + it.subjectId);
-        if (it.source) parts.push('Nguồn: ' + it.source);
-        meta.textContent = parts.join(' • ');
-        box.appendChild(meta);
-
-        if (it.contentSnippet) {
-          const sn = document.createElement('div'); sn.style.marginTop='8px'; sn.textContent = it.contentSnippet;
-          box.appendChild(sn);
-        }
-        frag.appendChild(box);
-      });
-      resultsEl.appendChild(frag);
-    }
-
-    // Execute search
-    async function doSearch() {
-      const q = inputQ.value.trim();
-      const grade = selGrade.value;
-      const subject = selSubject.value;
-      if (!q) {
-        infoEl.textContent = 'Vui lòng nhập từ khoá tìm kiếm.';
-        return;
-      }
-      const url = buildSearchUrl(q, grade, subject);
-      infoEl.textContent = 'Đang tìm...';
-      resultsEl.innerHTML = '';
-      try {
-        const resp = await fetch(url, { method:'GET' });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(()=>null);
-          throw new Error('HTTP ' + resp.status + ' ' + resp.statusText + (txt?': '+txt.slice(0,200):''));
-        }
-        const json = await resp.json();
-        renderResults(json);
-      } catch (err) {
-        console.error('search error', err);
-        infoEl.textContent = 'Lỗi khi tìm: ' + (err.message || String(err));
-        resultsEl.innerHTML = '';
-      }
-    }
-
-    // Events
-    selGrade.addEventListener('change', () => populateSubjectsForGrade(selGrade.value || ''));
-    btnSearch.addEventListener('click', (e) => { e.preventDefault(); doSearch(); });
-    inputQ.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); doSearch(); }});
-    btnClear.addEventListener('click', (e) => { e.preventDefault(); selGrade.value=''; populateSubjectsForGrade(''); selSubject.value=''; });
-    btnReset.addEventListener('click', (e) => { e.preventDefault(); inputQ.value=''; selGrade.value=''; populateSubjectsForGrade(''); selSubject.value=''; resultsEl.innerHTML=''; infoEl.textContent=''; });
-
-    // Init on load
-    document.addEventListener('DOMContentLoaded', () => {
-      initFromParams();
-      // If user arrived with query param q, auto-search
-      const q0 = param('q');
-      if (q0) {
-        setTimeout(()=>doSearch(), 200);
-      }
-      // Optional: wire global search input (if exists) to redirect here
-      try {
-        const globalSearch = document.getElementById('global-search');
-        if (globalSearch) {
-          globalSearch.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              const val = globalSearch.value.trim();
-              if (val) window.location.href = '/search.html?q=' + encodeURIComponent(val);
-            }
-          });
-        }
-      } catch (e) {}
-    });
   })();
   </script>
 </body>

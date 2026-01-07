@@ -4,13 +4,7 @@
   <meta charset="utf-8" />
   <title>Đăng ký — FP</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="main.css">
-  <style>
-    .auth-box { max-width:520px; margin:40px auto; padding:20px; border:1px solid #eee; border-radius:8px; background:#fff; }
-    .auth-box label { display:block; margin-bottom:6px; font-weight:600; }
-    .auth-box input { width:100%; padding:8px 10px; margin-bottom:12px; border-radius:6px; border:1px solid #ddd; }
-    .auth-box button { padding:8px 12px; border-radius:6px; cursor:pointer; }
-  </style>
+  <link rel="stylesheet" href="/main.css">
 </head>
 <body>
   <header class="site-header">
@@ -31,29 +25,27 @@
       <h2>Đăng ký</h2>
       <form id="register-form" method="post" action="/api/register">
         <label for="name">Họ & tên</label>
-        <input id="name" name="name" type="text" />
+        <input id="name" name="name" type="text" class="form-input" />
         <label for="username">Tên đăng nhập</label>
-        <input id="username" name="username" type="text" autocomplete="username" required />
+        <input id="username" name="username" type="text" autocomplete="username" required class="form-input" />
         <label for="password">Mật khẩu</label>
-        <input id="password" name="password" type="password" autocomplete="new-password" required />
+        <input id="password" name="password" type="password" autocomplete="new-password" required class="form-input" />
         <div style="display:flex;gap:8px;align-items:center">
-          <button type="submit">Đăng ký</button>
+          <button type="submit" class="btn">Đăng ký</button>
           <a href="login.html" style="margin-left:auto">Đã có tài khoản?</a>
         </div>
       </form>
-      <div style="margin-top:12px;color:#666;font-size:0.9rem">Form gửi bằng AJAX; sau khi đăng ký thành công sẽ tự login và cập nhật navbar.</div>
+      <div style="margin-top:12px;color:var(--muted);font-size:0.9rem">Form gửi bằng AJAX; sau khi đăng ký thành công sẽ tự login và cập nhật navbar.</div>
     </div>
   </main>
 
   <footer class="site-footer">
     <div class="container"><small>© FP</small></div>
   </footer>
-<!-- Add this in <head> BEFORE subject-links.js (or any client script that calls apiUrl) -->
-<script>
-  // Nếu frontend và API cùng origin (chạy node server trên same host/port), để ''.
-  // Nếu frontend trên port khác khi dev (ví dụ live-server port 5500), set thành http://localhost:5001
-  window.API_BASE = window.API_BASE || 'http://localhost:5001';
-</script>
-  <script src="subject-links.js"></script>
+
+  <script>
+    window.API_BASE = window.API_BASE || 'http://localhost:5001';
+  </script>
+  <script src="/subject-links.js"></script>
 </body>
 </html>
