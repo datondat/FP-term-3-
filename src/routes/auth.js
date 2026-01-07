@@ -22,6 +22,10 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 function wantsJson(req) {
+  // Consider X-Requested-With header (common for AJAX libraries)
+  const xrw = (req.get('X-Requested-With') || '').toLowerCase();
+  if (xrw === 'xmlhttprequest') return true;
+
   if (req.xhr) return true;
   const accept = (req.get('Accept') || '').toLowerCase();
   if (accept.indexOf('application/json') !== -1) return true;
