@@ -1,20 +1,21 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const getRawBody = require('raw-body');
-const session = require('express-session');
+const rawBody = require('raw-body');
+const cookieSession = require('cookie-session');
+
+const { pool } = require('./db'); // remains used by auth/other modules
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5001;
 
-// TEMP: Log mọi request để debug (bỏ sau khi fix)
+// TEMP: Log mọi request để debug (bỏ sau khi ổn định)
 app.use((req, res, next) => {
   console.log('>>> REQ', req.method, req.originalUrl, 'ct=', req.headers['content-type'] || '');
   next();
 });
 
-// --- DEBUG RAW BODY ROUTE ---
-const rawBody = require('raw-body');
+// --- DEBUG RAW BODY ROUTE (tạm, có thể xóa) ---
 app.post('/api/debug-raw', async (req, res) => {
   try {
     const len = req.headers['content-length'] ? parseInt(req.headers['content-length'], 10) : undefined;
@@ -41,18 +42,21 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// session middleware: MUST be before mounting routers that rely on req.session
-app.use(session({
-  name: process.env.SESSION_NAME || 'connect.sid',
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-this',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    secure: false,           // set true in production (HTTPS)
-    sameSite: 'lax',        // 'lax' is usually fine for same-site; use 'none' + secure for cross-site over HTTPS
-    maxAge: 24 * 60 * 60 * 1000
-  }
+// COOKIE-BASED SESSION (no DB schema required)
+// Note: cookie-session stores session data in a signed cookie. Good for small session payloads like userId.
+const sessionName = process.env.SESSION_NAME || 'connect.sid';
+const sessionSecret = process.env.SESSION_SECRET || 'dev-secret-change-this';
+const cookieSameSite = process.env.SESSION_SAMESITE || 'lax'; // 'lax' | 'strict' | 'none'
+const cookieSecure = (process.env.SESSION_SECURE === 'true') || (process.env.NODE_ENV === 'production');
+
+app.use(cookieSession({
+  name: sessionName,
+  keys: [sessionSecret],
+  // options:
+  maxAge: 24 * 60 * 60 * 1000, // 1 day
+  httpOnly: true,
+  secure: cookieSecure,
+  sameSite: cookieSameSite
 }));
 
 // JSON parse error handler: return JSON 400 instead of HTML stacktrace
@@ -82,11 +86,12 @@ try {
   console.warn('Auth router not found or failed to load:', e.message || e);
 }
 
+// optionally mount other routers (drive may require googleapis)
 try {
   app.use('/api', require('../server/drive'));
   console.log('Drive router mounted at /api');
 } catch (e) {
-  console.warn('Drive router not mounted (server/drive.js missing?):', e.message || e);
+  console.warn('Drive router not mounted (server/drive.js missing or dependency error?):', e.message || e);
 }
 
 try {

@@ -1,6 +1,8 @@
 /**
- * Updated auth.js: ensure session saved before responding.
- * No email/name columns assumed (uses username, password_hash, role).
+ * src/routes/auth.js (cookie-session friendly)
+ * - No DB schema changes required for session storage.
+ * - Sets req.session.userId and clears req.session = null on logout.
+ * - POST /api/logout always returns JSON { ok: true } for API clients.
  */
 
 const express = require('express');
@@ -80,20 +82,13 @@ router.post('/register', async (req, res) => {
     }
 
     const user = await createUser({ username, password });
+    // cookie-session: just assign req.session directly
     if (req.session) req.session.userId = user.id;
 
-    // Ensure session is saved before responding
-    if (req.session) {
-      req.session.save(err => {
-        if (err) console.error('session save error (register):', err);
-        if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-        return res.redirect('/');
-      });
-      return;
-    }
-
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-    return res.redirect('/');
+    // If not JSON, redirect: admins -> /admin, others -> homepage
+    const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
+    return res.redirect(redirectTo);
   } catch (err) {
     console.error('register error', err);
     if (wantsJson(req)) return res.status(500).json({ ok: false, error: err.message || 'server_error' });
@@ -122,25 +117,16 @@ router.post('/login', async (req, res) => {
       return res.redirect('/login?error=invalid_credentials');
     }
 
+    // cookie-session: set session directly
     if (req.session) req.session.userId = user.id;
 
-    // ensure session persisted before sending response
-    if (req.session) {
-      req.session.save(err => {
-        if (err) {
-          console.error('session save error (login):', err);
-          if (wantsJson(req)) return res.status(500).json({ ok: false, error: 'session_save_failed' });
-          return res.status(500).send('session save failed');
-        }
-        if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-        const redirectTo = req.query.next || req.body.next || '/';
-        return res.redirect(redirectTo);
-      });
-      return;
-    }
-
+    // If client expects JSON (AJAX), return JSON including role
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-    const redirectTo = req.query.next || req.body.next || '/';
+
+    // Non-AJAX login (form submit): redirect admins to /admin, others to homepage or next param
+    const redirectToQuery = req.query.next || req.body.next;
+    if (redirectToQuery) return res.redirect(redirectToQuery);
+    const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
     return res.redirect(redirectTo);
   } catch (err) {
     console.error('login error', err);
@@ -149,27 +135,19 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/** logout and /me unchanged (no email dependency) **/
+/** POST /api/logout — force JSON response so AJAX callers always receive JSON */
 router.post('/logout', (req, res) => {
   try {
-    if (!req.session) {
-      if (wantsJson(req)) return res.json({ ok: true });
-      return res.redirect('/');
-    }
-    req.session.destroy(err => {
-      try { res.clearCookie && res.clearCookie('connect.sid'); } catch (e) {}
-      if (err) {
-        console.error('session destroy error', err);
-        if (wantsJson(req)) return res.status(500).json({ ok: false, error: 'logout_failed' });
-        return res.status(500).send('logout failed');
-      }
-      if (wantsJson(req)) return res.json({ ok: true });
-      return res.redirect('/');
-    });
+    console.log('logout called — cookie-session present?', !!req.session, 'session.userId=', req.session && req.session.userId);
+
+    // Clear session for cookie-session
+    try { if (req.session) req.session = null; } catch (e) { console.error('error clearing session', e); }
+
+    // Always respond JSON for API clients so AJAX callers don't get HTML/redirect
+    res.type('application/json').status(200).json({ ok: true });
   } catch (err) {
     console.error('logout error', err);
-    if (wantsJson(req)) return res.status(500).json({ ok: false, error: err.message || 'server_error' });
-    return res.status(500).send('server error');
+    try { res.type('application/json').status(200).json({ ok: true, warning: 'logout_exception' }); } catch(e) { /* ignore */ }
   }
 });
 
