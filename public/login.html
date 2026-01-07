@@ -24,7 +24,8 @@
     <div class="note">Đăng nhập để truy cập tài liệu và tính năng quản lý.</div>
     <div style="height:12px"></div>
 
-    <form id="loginForm" action="/api/login" method="POST" novalidate>
+    <!-- Plain form submit only (no AJAX). Server will redirect on success. -->
+    <form id="loginForm" action="/api/login" method="POST" accept-charset="utf-8" novalidate>
       <label>
         <div class="small">Tên đăng nhập</div>
         <input id="username" name="username" type="text" autocomplete="username" required />
@@ -34,12 +35,11 @@
         <input id="password" name="password" type="password" autocomplete="current-password" required />
       </label>
 
-      <!-- hidden next param to tell server where to redirect after login -->
+      <!-- hidden next param so server can redirect back after login -->
       <input type="hidden" name="next" id="nextInput" value="/" />
 
       <div class="row">
         <button type="submit">Đăng nhập</button>
-        <button id="loginAjaxBtn" type="button" style="background:#2d9cdb">Đăng nhập (AJAX)</button>
       </div>
 
       <div id="loginMessage" class="muted" style="margin-top:8px"></div>
@@ -51,8 +51,8 @@
   </div>
 
   <script>
+    // Only set the hidden next param (no AJAX). Keep JS minimal to avoid interfering.
     (function(){
-      // set hidden next param from querystring or referrer
       const params = new URLSearchParams(window.location.search);
       let next = params.get('next') || '/';
       try {
@@ -64,62 +64,18 @@
       } catch(e){}
       document.getElementById('nextInput').value = next;
 
-      const usernameEl = document.getElementById('username');
-      const passwordEl = document.getElementById('password');
+      // Optional UX: show basic client-side validation message
+      const form = document.getElementById('loginForm');
       const msgEl = document.getElementById('loginMessage');
-      const ajaxBtn = document.getElementById('loginAjaxBtn');
-
-      function showMessage(s, isError) {
-        msgEl.textContent = s || '';
-        msgEl.className = isError ? 'error' : 'muted';
-      }
-
-      // AJAX login handler: uses fetch with credentials: 'include' so cookie will be set
-      ajaxBtn.addEventListener('click', async function (e) {
-        e.preventDefault();
-        showMessage('');
-        const username = (usernameEl.value || '').trim();
-        const password = (passwordEl.value || '').trim();
-        if (!username || !password) { showMessage('Vui lòng nhập tên đăng nhập và mật khẩu', true); return; }
-        ajaxBtn.disabled = true;
-        ajaxBtn.textContent = 'Đang đăng nhập...';
-        try {
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            credentials: 'include', // <- important: send and accept cookies
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest' // ensure server knows it's AJAX
-            },
-            body: JSON.stringify({ username, password, next })
-          });
-          const j = await res.json().catch(()=>null);
-          if (res.ok && j && j.ok) {
-            // server returned user info; if admin redirect to /admin, otherwise to next or home
-            const role = (j.user && j.user.role) || 'user';
-            const redirectTo = (role === 'admin') ? '/admin' : (next || '/');
-            window.location.href = redirectTo;
-            return;
-          } else {
-            const err = (j && (j.error || j.message)) ? (j.error || j.message) : ('HTTP ' + res.status);
-            showMessage('Đăng nhập thất bại: ' + err, true);
-          }
-        } catch (err) {
-          console.error('login ajax error', err);
-          showMessage('Lỗi mạng khi đăng nhập', true);
-        } finally {
-          ajaxBtn.disabled = false;
-          ajaxBtn.textContent = 'Đăng nhập (AJAX)';
+      form.addEventListener('submit', function (e) {
+        const u = document.getElementById('username').value.trim();
+        const p = document.getElementById('password').value.trim();
+        if (!u || !p) {
+          e.preventDefault();
+          msgEl.textContent = 'Vui lòng nhập tên đăng nhập và mật khẩu';
+          msgEl.className = 'error';
         }
       });
-
-      // Optional: pressing Enter on password should submit form (normal post)
-      document.getElementById('loginForm').addEventListener('submit', function(e){
-        // default: normal form submit will set cookie via server Set-Cookie and redirect
-        // nothing to change here
-      });
-
     })();
   </script>
 </body>

@@ -1,9 +1,9 @@
 /**
  * src/routes/auth.js
- * - cookie-session friendly (no req.session.save/destroy)
- * - POST /api/login returns JSON { ok:true, user:{...} } for AJAX clients
- * - Non-AJAX form submit redirects to /admin when role==='admin'
- * - POST /api/logout always returns JSON { ok:true }
+ * Full router: handles POST /api/login, plus GET /api/login -> redirect to /login.
+ * Keeps behavior: non-AJAX form submit redirects to /admin when role==='admin'.
+ *
+ * Note: temporary debug logs present. Remove them when fixed.
  */
 const express = require('express');
 const router = express.Router();
@@ -22,11 +22,8 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 function wantsJson(req) {
-  // Consider X-Requested-With header (common for AJAX libraries)
   const xrw = (req.get('X-Requested-With') || '').toLowerCase();
   if (xrw === 'xmlhttprequest') return true;
-
-  if (req.xhr) return true;
   const accept = (req.get('Accept') || '').toLowerCase();
   if (accept.indexOf('application/json') !== -1) return true;
   const contentType = (req.get('Content-Type') || '').toLowerCase();
@@ -71,6 +68,19 @@ async function createUser({ username, password, role }) {
   }
 }
 
+/**
+ * GET /api/login
+ * - If browser navigation -> redirect to /login (static page)
+ * - If AJAX expects JSON -> return 405 Method Not Allowed JSON
+ */
+router.get('/login', (req, res) => {
+  if (wantsJson(req)) {
+    return res.status(405).json({ ok: false, error: 'method_not_allowed', message: 'Use POST /api/login to authenticate' });
+  }
+  // Non-AJAX: redirect to the login page
+  return res.redirect('/login');
+});
+
 /** POST /api/register */
 router.post('/register', async (req, res) => {
   try {
@@ -90,7 +100,6 @@ router.post('/register', async (req, res) => {
     if (req.session) req.session.userId = user.id;
 
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-    // Non-AJAX: redirect admin -> /admin, others -> /
     const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
     return res.redirect(redirectTo);
   } catch (err) {
@@ -122,7 +131,25 @@ router.post('/login', async (req, res) => {
     }
 
     // Set session (cookie-session)
-    if (req.session) req.session.userId = user.id;
+    if (req.session) {
+      req.session.userId = user.id;
+      // Debug log to confirm session set
+      try {
+        console.log('DEBUG LOGIN: req.session after set =', JSON.parse(JSON.stringify(req.session)));
+      } catch (e) {
+        console.log('DEBUG LOGIN: req.session after set =', req.session);
+      }
+    }
+
+    // Log final Set-Cookie when response finished (to ensure cookie is actually written)
+    res.once && res.once('finish', () => {
+      try {
+        const finalSC = res.getHeader && res.getHeader('Set-Cookie');
+        console.log('DEBUG LOGIN: response finished. final Set-Cookie header =', finalSC);
+      } catch (e) {
+        console.log('DEBUG LOGIN: error reading final Set-Cookie', e && e.message);
+      }
+    });
 
     // For AJAX clients return JSON including role
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });

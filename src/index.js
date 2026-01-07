@@ -147,7 +147,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// fallback to SPA: must be after API mounts and admin route
+// fallback to SPA: must be after API mounts
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
