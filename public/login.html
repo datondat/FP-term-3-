@@ -4,106 +4,114 @@
   <meta charset="utf-8" />
   <title>Đăng nhập — FP</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="main.css">
   <style>
-    .auth-box { max-width:420px; margin:40px auto; padding:20px; border:1px solid #eee; border-radius:8px; background:#fff; }
-    .auth-box label { display:block; margin-bottom:6px; font-weight:600; }
-    .auth-box input { width:100%; padding:8px 10px; margin-bottom:12px; border-radius:6px; border:1px solid #ddd; }
-    .auth-box button { padding:8px 12px; border-radius:6px; cursor:pointer; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:0;background:#f7f8fb;color:#111}
+    .wrap{max-width:520px;margin:48px auto;padding:18px;background:#fff;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+    h1{margin:0 0 12px 0;font-size:20px}
+    form{display:flex;flex-direction:column;gap:10px}
+    input[type="text"],input[type="password"]{padding:10px;border:1px solid #ddd;border-radius:8px}
+    button{padding:10px;border-radius:8px;border:none;background:#0b79d0;color:#fff;cursor:pointer}
+    .muted{color:#666;font-size:13px}
+    .note{font-size:13px;color:#666}
+    .row { display:flex; gap:8px; align-items:center; }
+    .small { font-size:13px; color:#666; }
+    .error { color:#b02; }
   </style>
 </head>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const form = document.getElementById('login-form');
-  if (!form) return;
+<body>
+  <div class="wrap">
+    <h1>Đăng nhập</h1>
+    <div class="note">Đăng nhập để truy cập tài liệu và tính năng quản lý.</div>
+    <div style="height:12px"></div>
 
-  // Prevent double handlers: remove inline action to avoid browser native submit if present
-  try { form.removeAttribute('action'); } catch(e){}
+    <form id="loginForm" action="/api/login" method="POST" novalidate>
+      <label>
+        <div class="small">Tên đăng nhập</div>
+        <input id="username" name="username" type="text" autocomplete="username" required />
+      </label>
+      <label>
+        <div class="small">Mật khẩu</div>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+      </label>
 
-  form.addEventListener('submit', async function (ev) {
-    ev.preventDefault();
+      <!-- hidden next param to tell server where to redirect after login -->
+      <input type="hidden" name="next" id="nextInput" value="/" />
 
-    const fd = new FormData(form);
-    const payload = {
-      username: (fd.get('username') || fd.get('email') || '').toString(),
-      password: (fd.get('password') || '').toString()
-    };
+      <div class="row">
+        <button type="submit">Đăng nhập</button>
+        <button id="loginAjaxBtn" type="button" style="background:#2d9cdb">Đăng nhập (AJAX)</button>
+      </div>
 
-    const apiPath = (typeof window.apiUrl === 'function') ? window.apiUrl('/api/login') : (window.API_BASE ? window.API_BASE.replace(/\/$/,'') + '/api/login' : '/api/login');
+      <div id="loginMessage" class="muted" style="margin-top:8px"></div>
+    </form>
 
-    try {
-      const res = await fetch(apiPath, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    <div style="margin-top:12px" class="muted">
+      Chưa có tài khoản? <a href="/register">Đăng ký</a>
+    </div>
+  </div>
+
+  <script>
+    // Set hidden next input from querystring (or referrer) so server can redirect back
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+      let next = params.get('next') || '/';
+      // If there's a referrer within same origin and next is default '/', you can use it:
+      try {
+        const ref = document.referrer || '';
+        const isSameOrigin = ref && (new URL(ref)).origin === location.origin;
+        if (isSameOrigin && (!params.get('next') || params.get('next') === '/')) {
+          // if referrer points to a document page, use it as next
+          next = ref.startsWith(location.origin) ? ref.slice(location.origin.length) : next;
+        }
+      } catch(e){}
+      const nextInput = document.getElementById('nextInput');
+      if (nextInput) nextInput.value = next;
+    })();
+
+    // AJAX login helper (optional)
+    (function(){
+      const loginForm = document.getElementById('loginForm');
+      const loginAjaxBtn = document.getElementById('loginAjaxBtn');
+      const loginMessage = document.getElementById('loginMessage');
+
+      async function doAjaxLogin() {
+        loginMessage.textContent = 'Đang đăng nhập...';
+        const form = new FormData(loginForm);
+        const payload = {
+          username: form.get('username') || '',
+          password: form.get('password') || '',
+          next: form.get('next') || '/'
+        };
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const j = await res.json().catch(()=>null);
+          if (res.ok && j && j.ok) {
+            // redirect to next
+            const target = payload.next || '/';
+            window.location.href = target;
+            return;
+          }
+          loginMessage.classList.remove('muted'); loginMessage.classList.add('error');
+          loginMessage.textContent = (j && (j.error || j.message)) ? (j.error || j.message) : 'Đăng nhập thất bại';
+        } catch (err) {
+          loginMessage.classList.remove('muted'); loginMessage.classList.add('error');
+          loginMessage.textContent = 'Lỗi mạng khi đăng nhập';
+          console.error('login ajax error', err);
+        }
+      }
+
+      loginAjaxBtn && loginAjaxBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        doAjaxLogin();
       });
 
-      const text = await res.text().catch(()=>null);
-      let json = null;
-      try { json = text ? JSON.parse(text) : null; } catch(e) { json = null; }
-
-      if (res.ok && json && json.ok) {
-        // Nếu là admin thì redirect tới admin.html, ngược lại về homepage
-        try {
-          if (json.user && json.user.role === 'admin') {
-            window.location.href = '/admin.html';
-          } else {
-            window.location.href = '/';
-          }
-        } catch (e) {
-          // fallback
-          window.location.href = '/';
-        }
-      } else {
-        const errMsg = (json && (json.error || json.message)) ? (json.error || json.message) : (text || ('HTTP ' + res.status));
-        alert('Đăng nhập thất bại: ' + errMsg);
-      }
-    } catch (err) {
-      console.error('Login fetch error', err);
-      alert('Lỗi khi kết nối tới server: ' + (err && err.message ? err.message : String(err)));
-    }
-  }, { passive: false });
-});
-</script>
-<body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="branding">
-        <a href="/" class="logo">FP</a>
-      </div>
-      <nav class="site-nav" id="nav">
-        <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
-        <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
-        <a href="#" id="link-logout" class="nav-link" style="display:none">Đăng xuất</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="container">
-    <div class="auth-box">
-      <h2>Đăng nhập</h2>
-      <form id="login-form" method="post" action="/api/login">
-        <label for="username">Tên đăng nhập hoặc email</label>
-        <input id="username" name="username" type="text" autocomplete="username" required />
-        <label for="password">Mật khẩu</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required />
-        <div style="display:flex;gap:8px;align-items:center">
-          <button type="submit">Đăng nhập</button>
-          <a href="register.html" style="margin-left:auto">Chưa có tài khoản?</a>
-        </div>
-      </form>
-      <div style="margin-top:12px;color:#666;font-size:0.9rem">Ghi chú: form này được submit bằng AJAX và sẽ giữ session nếu server trả Set-Cookie.</div>
-    </div>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container"><small>© FP</small></div>
-  </footer>
-<script>
-  // Dev default: nếu frontend tách origin, set API_BASE phù hợp
-  window.API_BASE = window.API_BASE || 'http://localhost:5001';
-</script>
-  <script src="subject-links.js"></script>
+      // Optional: if user submits normal form, server will redirect based on hidden next
+    })();
+  </script>
 </body>
 </html>

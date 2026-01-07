@@ -1,13 +1,44 @@
 // public/file-viewer.js
 // Logic để nhúng/hiển thị tài liệu trên trang file.html?id=...&name=...
-// - Recommended: server có route GET /api/drive/file/:id streaming file với Content-Type (PDF/...)
-// - If backend runs on different origin, set window.API_BASE = 'http://localhost:5001' BEFORE loading this script.
+// - Uses fetch(..., { credentials: 'include' }) so server session/cookie are sent
+// - Improved comment posting UX and clearer error handling
 
 (function () {
   function qs(name) {
     try { return (new URL(window.location.href)).searchParams.get(name); } catch (e) { return null; }
   }
   function safeText(s){ return String(s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // fetch wrapper including cookies for same-origin session-based auth
+  function apiFetch(path, opts = {}) {
+    const merged = Object.assign({ credentials: 'include' }, opts || {});
+    return fetch(path, merged);
+  }
+
+  // ensure login/register links include ?next=currentPage so server redirects back after login
+  function ensureAuthLinks() {
+    try {
+      const next = window.location.pathname + window.location.search + window.location.hash;
+      const login = document.getElementById('link-login');
+      if (login) {
+        try {
+          const u = new URL(login.getAttribute('href') || login.href, location.origin);
+          u.searchParams.set('next', next);
+          login.href = u.toString();
+        } catch(e) {}
+      }
+      const reg = document.getElementById('link-register');
+      if (reg) {
+        try {
+          const u2 = new URL(reg.getAttribute('href') || reg.href, location.origin);
+          u2.searchParams.set('next', next);
+          reg.href = u2.toString();
+        } catch(e) {}
+      }
+    } catch (e) {
+      console.warn('ensureAuthLinks error', e);
+    }
+  }
 
   const id = qs('id');
   const fileName = qs('name') || '';
@@ -21,9 +52,10 @@
   metaEl.textContent = id ? ('ID: ' + id) : '';
 
   if (!id) {
-    viewerWrapper.innerHTML = '<div style="padding:18px;color:#900;">Thiếu tham số id. Ví dụ: /file.html?id=FILE_ID</div>';
-    rawLink.style.display = 'none';
-    downloadLink.style.display = 'none';
+    if (viewerWrapper) viewerWrapper.innerHTML = '<div style="padding:18px;color:#900;">Thiếu tham số id. Ví dụ: /file.html?id=FILE_ID</div>';
+    if (rawLink) rawLink.style.display = 'none';
+    if (downloadLink) downloadLink.style.display = 'none';
+    ensureAuthLinks();
     return;
   }
 
@@ -36,11 +68,13 @@
   const fileUrl = apiPath(`/api/drive/file/${encodeURIComponent(id)}`);
 
   // Set controls
-  rawLink.href = fileUrl;
-  downloadLink.href = fileUrl;
-  downloadLink.setAttribute('download', fileName || '');
+  if (rawLink) rawLink.href = fileUrl;
+  if (downloadLink) {
+    downloadLink.href = fileUrl;
+    downloadLink.setAttribute('download', fileName || '');
+  }
 
-  // Try embed via iframe first (streams, minimal memory)
+  // Create iframe element for embedding
   function createIframe(url) {
     const iframe = document.createElement('iframe');
     iframe.src = url;
@@ -51,34 +85,34 @@
     return iframe;
   }
 
-  // Insert iframe and verify quickly (if browser blocks by X-Frame-Options, iframe may show blank or browser console will hint)
+  // Try embedding via iframe first
   try {
-    viewerWrapper.innerHTML = '';
+    if (viewerWrapper) viewerWrapper.innerHTML = '';
     const iframe = createIframe(fileUrl);
-    viewerWrapper.appendChild(iframe);
+    if (viewerWrapper) viewerWrapper.appendChild(iframe);
 
-    // set a short timeout to check if content likely blocked (heuristic)
+    // After a short delay ensure auth links are set
     setTimeout(()=> {
-      // If iframe contentWindow is accessible and location is about:blank or similar, we can't reliably detect block cross-origin.
-      // We keep iframe; if blocked, user can use "Mở tài liệu" button which opens server stream in new tab.
-    }, 800);
-    // Done (recommended path)
-    return;
+      ensureAuthLinks();
+    }, 600);
   } catch (e) {
-    console.warn('Iframe embed failed, falling back to fetch->blob', e);
+    console.warn('Iframe embed failed, will attempt blob fallback', e);
   }
 
-  // Fallback: fetch as blob then display via object (works when you need to add Authorization header)
+  // Fallback: fetch as blob and show with <object> if iframe is blocked or stream not available.
   (async function fetchBlobFallback() {
-    viewerWrapper.innerHTML = '<div style="padding:18px;color:var(--muted)">Đang tải tài liệu...</div>';
     try {
-      // If you need auth header (JWT), add here. Example:
-      // const token = localStorage.getItem('token');
-      // const resp = await fetch(fileUrl, { headers: { Authorization: 'Bearer ' + token } });
-      const resp = await fetch(fileUrl, {
-        method: 'GET',
-        // credentials: 'include' // enable if you need cookies/session
-      });
+      // If iframe exists, assume it works; otherwise try fallback
+      const ifr = viewerWrapper && viewerWrapper.querySelector && viewerWrapper.querySelector('iframe');
+      if (ifr) {
+        // don't fetch blob immediately to avoid double download
+        return;
+      }
+    } catch(e){}
+
+    if (viewerWrapper) viewerWrapper.innerHTML = '<div style="padding:18px;color:var(--muted)">Đang tải tài liệu...</div>';
+    try {
+      const resp = await apiFetch(fileUrl, { method: 'GET' });
       if (!resp.ok) {
         const txt = await resp.text().catch(()=>null);
         throw new Error(`HTTP ${resp.status} ${resp.statusText}${txt?': '+txt.slice(0,200):''}`);
@@ -94,21 +128,169 @@
       objectEl.style.height = '100%';
       objectEl.style.border = '0';
 
-      viewerWrapper.innerHTML = '';
-      viewerWrapper.appendChild(objectEl);
+      if (viewerWrapper) {
+        viewerWrapper.innerHTML = '';
+        viewerWrapper.appendChild(objectEl);
+      }
 
-      // update download link to blob URL
-      downloadLink.href = blobUrl;
-      rawLink.href = blobUrl;
+      // update download/raw links to blob URL for convenience
+      if (downloadLink) downloadLink.href = blobUrl;
+      if (rawLink) rawLink.href = blobUrl;
 
-      // revoke on unload
       window.addEventListener('beforeunload', () => { try{ URL.revokeObjectURL(blobUrl); } catch(e){} });
+
+      ensureAuthLinks();
     } catch (err) {
       console.error('Lỗi tải tài liệu:', err);
       const safe = safeText(err.message || String(err));
-      viewerWrapper.innerHTML = `<div style="padding:18px;color:#900;">Không thể tải tài liệu: ${safe}</div>
+      if (viewerWrapper) viewerWrapper.innerHTML = `<div style="padding:18px;color:#900;">Không thể tải tài liệu: ${safe}</div>
         <div style="padding:8px;"><a href="${fileUrl}" target="_blank" rel="noopener">Mở tài liệu ở tab mới</a></div>`;
+      ensureAuthLinks();
     }
+  })();
+
+  /* ----------------- COMMENTS ----------------- */
+  // Render comment list
+  async function loadComments() {
+    const fileId = qs('id');
+    const list = document.getElementById('comments-list');
+    if (!list) return;
+    list.innerHTML = 'Đang tải bình luận...';
+    try {
+      const url = fileId ? '/api/comments?fileId=' + encodeURIComponent(fileId) : '/api/comments';
+      const res = await apiFetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+      const j = await res.json().catch(()=>null);
+      if (!res.ok || !j || !j.ok) {
+        list.innerHTML = '<div class="muted">Không thể tải bình luận.</div>';
+        console.warn('loadComments unexpected response', res.status, j);
+        return;
+      }
+      const comments = j.comments || [];
+      if (!comments.length) {
+        list.innerHTML = '<div class="muted">Chưa có bình luận nào.</div>';
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      comments.forEach(c => {
+        const div = document.createElement('div');
+        div.style.padding = '8px';
+        div.style.borderBottom = '1px solid #eee';
+        const who = document.createElement('div');
+        who.style.fontWeight = '600';
+        who.style.marginBottom = '4px';
+        who.textContent = c.author || c.username || ('User #' + (c.user_id || ''));
+        const when = document.createElement('div');
+        when.className = 'muted';
+        when.style.fontSize = '12px';
+        when.textContent = c.created_at ? (new Date(c.created_at)).toLocaleString() : '';
+        const cont = document.createElement('div');
+        cont.textContent = c.content || '';
+        div.appendChild(who);
+        div.appendChild(when);
+        div.appendChild(cont);
+        frag.appendChild(div);
+      });
+      list.innerHTML = '';
+      list.appendChild(frag);
+    } catch (err) {
+      console.error('loadComments error', err);
+      const listEl = document.getElementById('comments-list');
+      if (listEl) listEl.innerHTML = '<div class="muted">Lỗi khi tải bình luận.</div>';
+    }
+  }
+
+  // Post a new comment (improved UX)
+  async function postComment() {
+    const fileId = qs('id');
+    const textEl = document.getElementById('comment-text');
+    const authorEl = document.getElementById('comment-author');
+    const postBtn = document.getElementById('comment-post');
+
+    if (!textEl) return;
+    const content = textEl.value && textEl.value.trim();
+    if (!content) { alert('Viết nội dung bình luận'); textEl.focus(); return; }
+
+    const payload = { content };
+    if (fileId) payload.fileId = fileId;
+    const author = authorEl && authorEl.value && authorEl.value.trim();
+    if (author) payload.author = author;
+
+    // Disable UI while sending
+    if (postBtn) { postBtn.disabled = true; postBtn.textContent = 'Đang gửi...'; }
+
+    try {
+      const res = await apiFetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const j = await res.json().catch(()=>null);
+
+      if (res.ok && j && j.ok) {
+        // success
+        textEl.value = '';
+        await loadComments();
+        // if user posted anonymously and provided an author, keep it
+        if (authorEl && (!authorEl.disabled)) {
+          authorEl.value = payload.author || '';
+        }
+      } else {
+        // handle known server errors
+        const errCode = j && j.error ? j.error : null;
+        const errMsg = j && (j.message || j.error) ? (j.message || j.error) : ('HTTP ' + res.status);
+        // Authentication required?
+        if (res.status === 401 || errCode === 'login_required' || errMsg.toLowerCase().includes('login')) {
+          alert('Bạn cần đăng nhập để gửi bình luận. Vui lòng đăng nhập rồi thử lại.');
+          // open login page with ?next back to this page
+          const login = document.getElementById('link-login');
+          if (login) window.location.href = login.href;
+        } else if (errCode === 'content_required') {
+          alert('Nội dung bình luận bị trống.');
+        } else {
+          alert('Gửi bình luận thất bại: ' + safeText(String(errMsg)));
+        }
+      }
+    } catch (err) {
+      console.error('postComment error', err);
+      alert('Lỗi mạng khi gửi bình luận. Thử lại.');
+    } finally {
+      if (postBtn) { postBtn.disabled = false; postBtn.textContent = 'Gửi bình luận'; }
+    }
+  }
+
+  // Prepare comment form: load current user to disable author input if logged in
+  async function prepareCommentForm() {
+    const authorEl = document.getElementById('comment-author');
+    const postBtn = document.getElementById('comment-post');
+    const clearBtn = document.getElementById('comment-clear');
+
+    if (postBtn) postBtn.addEventListener('click', (e) => { e.preventDefault(); postComment(); });
+    if (clearBtn) clearBtn.addEventListener('click', (e)=>{ e.preventDefault(); const t = document.getElementById('comment-text'); if (t) t.value=''; });
+
+    try {
+      const res = await apiFetch('/api/me', { method: 'GET', headers: { 'Accept': 'application/json' } });
+      const j = await res.json().catch(()=>null);
+      if (res.ok && j && j.ok && j.user) {
+        if (authorEl) {
+          authorEl.value = j.user.displayName || j.user.username || '';
+          authorEl.disabled = true;
+          authorEl.placeholder = 'Bạn đang đăng nhập';
+        }
+      } else {
+        if (authorEl) { authorEl.disabled = false; authorEl.placeholder = 'Tên (tuỳ chọn)'; }
+      }
+    } catch (err) {
+      console.warn('prepareCommentForm check user failed', err);
+      if (authorEl) { authorEl.disabled = false; authorEl.placeholder = 'Tên (tuỳ chọn)'; }
+    }
+  }
+
+  // Init
+  (function init(){
+    ensureAuthLinks();
+    prepareCommentForm();
+    loadComments();
   })();
 
 })();

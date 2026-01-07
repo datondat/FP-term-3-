@@ -11,18 +11,29 @@
     .viewer .placeholder { padding:18px; color:var(--muted); }
     .controls { display:flex; gap:8px; align-items:center; }
     @media (max-width:800px){ .controls{flex-direction:column;align-items:flex-start} }
+
+    .btn { padding:8px 12px;border-radius:6px;background:#0b79d0;color:#fff;text-decoration:none;display:inline-block;border:none;cursor:pointer }
+    .btn-ghost { padding:8px 12px;border-radius:6px;background:transparent;border:1px solid #ccc;color:#111;text-decoration:none;cursor:pointer }
+    .muted { color:#666 }
+    .nav-link { margin-left:12px; color:#0b79d0; text-decoration:none }
+    .user-name { margin-right:12px; font-weight:600; color:#111 }
+    .nav-buttons { display:flex; align-items:center; gap:8px; }
   </style>
 </head>
 <body>
   <header class="site-header">
-    <div class="container header-inner">
-      <div class="branding">
+    <div class="container header-inner" style="display:flex;align-items:center;gap:12px;">
+      <div class="branding" style="display:flex;flex-direction:column;">
         <a href="/" class="logo">FP</a>
         <div class="site-sub">Hệ thống học tập</div>
       </div>
-      <nav class="site-nav" id="nav">
-        <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
-        <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
+
+      <!-- Nav area. We keep the classic links but JS will add ?next=... and replace links with username+logout when logged in -->
+      <nav class="site-nav" id="nav" style="margin-left:auto">
+        <div class="nav-buttons" id="nav-buttons">
+          <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
+          <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
+        </div>
       </nav>
     </div>
   </header>
@@ -42,9 +53,9 @@
 
       <div style="margin-top:12px;">
         <div class="muted" style="padding:18px;border-radius:8px;border:1px solid var(--border);">
-          Click "Mở tài liệu" để xem tài liệu trên trang mới (stream từ Drive qua server).<br>
+          Click "Mở tài liệu" để xem tài liệu trên trang mới (stream từ server).<br>
           Nếu muốn tải về, click "Tải về".<br>
-          Hoặc trang này sẽ cố gắng nhúng tài liệu vào ngay bên dưới (iframe/object). Nếu server trả header X-Frame-Options: DENY thì trình nhúng sẽ bị chặn và nút "Mở tài liệu" vẫn hoạt động.
+          Trình nhúng sẽ cố gắng hiển thị tài liệu trực tiếp bên dưới (iframe/object). Nếu server trả header ngăn nhúng, trình nhúng sẽ fallback về liên kết mở trong tab mới.
         </div>
       </div>
 
@@ -74,6 +85,77 @@
     </div>
   </footer>
 
+  <!-- Minimal inline script to ensure login link includes ?next and to render username/logout quickly.
+       The bulk of viewer + comment logic is handled by public/file-viewer.js (keeps separation). -->
+  <script>
+    (function(){
+      // Add ?next=currentPage to login/register links (so server redirects back after login).
+      function qs(name){ try { return (new URL(window.location.href)).searchParams.get(name); } catch(e){ return null; } }
+      function ensureAuthLinks() {
+        try {
+          const next = window.location.pathname + window.location.search + window.location.hash;
+          const login = document.getElementById('link-login');
+          if (login) {
+            try {
+              const u = new URL(login.getAttribute('href') || login.href, location.origin);
+              u.searchParams.set('next', next);
+              login.href = u.toString();
+            } catch(e){ /* ignore */ }
+          }
+          const reg = document.getElementById('link-register');
+          if (reg) {
+            try {
+              const u2 = new URL(reg.getAttribute('href') || reg.href, location.origin);
+              u2.searchParams.set('next', next);
+              reg.href = u2.toString();
+            } catch(e){ /* ignore */ }
+          }
+        } catch(e){}
+      }
+
+      // Quick check current session and replace nav links with username + logout (lightweight).
+      async function renderUserInNav() {
+        try {
+          // send cookie; fetch will include credentials only if same-origin and browser allowed cookies
+          const res = await fetch('/api/me', { method: 'GET', credentials: 'include' });
+          const j = await res.json().catch(()=>null);
+          const nav = document.getElementById('nav');
+          if (!nav) return;
+          if (res.ok && j && j.ok && j.user) {
+            // show username + logout
+            const container = document.getElementById('nav-buttons');
+            if (!container) return;
+            container.innerHTML = '';
+            const span = document.createElement('span');
+            span.className = 'user-name';
+            span.textContent = j.user.displayName || j.user.username || 'Người dùng';
+            container.appendChild(span);
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.textContent = 'Đăng xuất';
+            btn.addEventListener('click', async () => {
+              try {
+                await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+              } catch(e){}
+              window.location.reload();
+            });
+            container.appendChild(btn);
+          } else {
+            ensureAuthLinks();
+          }
+        } catch (e) {
+          // on error, still ensure links have next
+          ensureAuthLinks();
+        }
+      }
+
+      // Run early to ensure nav updated quickly
+      ensureAuthLinks();
+      renderUserInNav();
+    })();
+  </script>
+
+  <!-- main viewer + comments script -->
   <script src="file-viewer.js"></script>
 </body>
 </html>

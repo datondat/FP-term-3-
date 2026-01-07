@@ -1,59 +1,77 @@
-// src/routes/comments.js
+'use strict';
+/**
+ * src/routes/comments.js
+ * GET  /api/comments?fileId=...
+ * POST /api/comments
+ *
+ * Requires src/db.js exporting { pool }.
+ */
+
 const express = require('express');
-const { pool } = require('../db');
-const { authMiddleware } = require('./auth');
-
 const router = express.Router();
+const { pool } = require('../db');
 
-// List comments by materialId
+function formatRow(row) {
+  return {
+    id: row.id,
+    fileId: row.file_id,
+    user_id: row.user_id,
+    author: row.author,
+    content: row.content,
+    created_at: row.created_at
+  };
+}
+
+/* GET /api/comments?fileId=... */
 router.get('/', async (req, res) => {
-  const materialId = req.query.materialId || null;
   try {
-    const client = await pool.connect();
-    try {
-      let q = `SELECT c.id, c.material_id, c.user_id, c.content, c.created_at, u.username, u.display_name
-               FROM comments c
-               LEFT JOIN users u ON u.id = c.user_id`;
-      const params = [];
-      if (materialId) {
-        q += ' WHERE c.material_id = $1';
-        params.push(materialId);
-      }
-      q += ' ORDER BY c.created_at DESC LIMIT 200';
-      const r = await client.query(q, params);
-      res.json({ ok: true, comments: r.rows.map(row => ({
-        id: row.id,
-        materialId: row.material_id,
-        userId: row.user_id,
-        content: row.content,
-        createdAt: row.created_at,
-        user: { username: row.username, displayName: row.display_name }
-      }))});
-    } finally { client.release(); }
+    const fileId = req.query.fileId || null;
+    let sql = 'SELECT id, file_id, user_id, author, content, created_at FROM comments';
+    const params = [];
+    if (fileId) {
+      sql += ' WHERE file_id = $1';
+      params.push(fileId);
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 500';
+    const r = await pool.query(sql, params);
+    return res.json({ ok: true, comments: r.rows.map(formatRow) });
   } catch (err) {
-    console.error('comments list error', err);
-    res.status(500).json({ ok: false, error: err.message });
+    console.error('GET /api/comments error', err && (err.stack || err));
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
 
-// Post a comment (requires auth)
-router.post('/', authMiddleware, async (req, res) => {
-  const { materialId, content } = req.body || {};
-  if (!materialId || !content) return res.status(400).json({ ok: false, error: 'materialId and content required' });
+/* POST /api/comments
+   body: { fileId, content, author? }
+*/
+router.post('/', async (req, res) => {
   try {
-    const client = await pool.connect();
-    try {
-      const r = await client.query(
-        `INSERT INTO comments (material_id, user_id, content, created_at)
-         VALUES ($1,$2,$3,now()) RETURNING id, material_id, user_id, content, created_at`,
-        [materialId, req.user.id, content]
-      );
-      const row = r.rows[0];
-      res.json({ ok: true, comment: { id: row.id, materialId: row.material_id, userId: row.user_id, content: row.content, createdAt: row.created_at }});
-    } finally { client.release(); }
+    const { fileId, content, author } = req.body || {};
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ ok: false, error: 'content_required' });
+    }
+    const fid = fileId ? String(fileId) : null;
+    const userId = req.session && req.session.userId ? req.session.userId : null;
+
+    let authorToSave = null;
+    if (userId) {
+      authorToSave = author && String(author).trim() ? String(author).trim() : null;
+    } else {
+      authorToSave = author && String(author).trim() ? String(author).trim() : 'Khách';
+    }
+
+    const sql = `
+      INSERT INTO comments (file_id, user_id, author, content)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, file_id, user_id, author, content, created_at
+    `;
+    const params = [fid, userId, authorToSave, String(content).trim()];
+    const r = await pool.query(sql, params);
+    const inserted = r.rows[0];
+    return res.json({ ok: true, comment: formatRow(inserted) });
   } catch (err) {
-    console.error('comments post error', err);
-    res.status(500).json({ ok: false, error: err.message });
+    console.error('POST /api/comments error', err && (err.stack || err));
+    return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
 
