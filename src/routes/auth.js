@@ -1,9 +1,9 @@
 /**
  * src/routes/auth.js
- * Full router: handles POST /api/login, plus GET /api/login -> redirect to /login.
- * Keeps behavior: non-AJAX form submit redirects to /admin when role==='admin'.
- *
- * Note: temporary debug logs present. Remove them when fixed.
+ * - cookie-session friendly (no req.session.save/destroy)
+ * - POST /api/login returns JSON { ok:true, user:{...} } for AJAX clients
+ * - Non-AJAX form submit redirects to /admin when role==='admin'
+ * - POST /api/logout always returns JSON { ok:true }
  */
 const express = require('express');
 const router = express.Router();
@@ -68,19 +68,6 @@ async function createUser({ username, password, role }) {
   }
 }
 
-/**
- * GET /api/login
- * - If browser navigation -> redirect to /login (static page)
- * - If AJAX expects JSON -> return 405 Method Not Allowed JSON
- */
-router.get('/login', (req, res) => {
-  if (wantsJson(req)) {
-    return res.status(405).json({ ok: false, error: 'method_not_allowed', message: 'Use POST /api/login to authenticate' });
-  }
-  // Non-AJAX: redirect to the login page
-  return res.redirect('/login');
-});
-
 /** POST /api/register */
 router.post('/register', async (req, res) => {
   try {
@@ -100,6 +87,7 @@ router.post('/register', async (req, res) => {
     if (req.session) req.session.userId = user.id;
 
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
+    // Non-AJAX: redirect admin -> /admin, others -> /
     const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
     return res.redirect(redirectTo);
   } catch (err) {
@@ -131,32 +119,21 @@ router.post('/login', async (req, res) => {
     }
 
     // Set session (cookie-session)
-    if (req.session) {
-      req.session.userId = user.id;
-      // Debug log to confirm session set
-      try {
-        console.log('DEBUG LOGIN: req.session after set =', JSON.parse(JSON.stringify(req.session)));
-      } catch (e) {
-        console.log('DEBUG LOGIN: req.session after set =', req.session);
-      }
-    }
-
-    // Log final Set-Cookie when response finished (to ensure cookie is actually written)
-    res.once && res.once('finish', () => {
-      try {
-        const finalSC = res.getHeader && res.getHeader('Set-Cookie');
-        console.log('DEBUG LOGIN: response finished. final Set-Cookie header =', finalSC);
-      } catch (e) {
-        console.log('DEBUG LOGIN: error reading final Set-Cookie', e && e.message);
-      }
-    });
+    if (req.session) req.session.userId = user.id;
 
     // For AJAX clients return JSON including role
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
 
-    // Non-AJAX: redirect admin to /admin, others to next or home
-    const redirectToQuery = req.query.next || req.body.next;
-    if (redirectToQuery) return res.redirect(redirectToQuery);
+    // Non-AJAX: decide redirect
+    // Only honor next if it's a non-default relative path (not just '/')
+    const redirectToQuery = (req.query.next || req.body.next || '').toString();
+    const safeNext = (redirectToQuery && redirectToQuery !== '/' && redirectToQuery.startsWith('/')) ? redirectToQuery : null;
+
+    if (safeNext) {
+      return res.redirect(safeNext);
+    }
+
+    // Otherwise redirect based on role
     const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
     return res.redirect(redirectTo);
   } catch (err) {
@@ -169,8 +146,7 @@ router.post('/login', async (req, res) => {
 /** POST /api/logout — always return JSON */
 router.post('/logout', (req, res) => {
   try {
-    console.log('logout called — cookie-session present?', !!req.session, 'session.userId=', req.session && req.session.userId);
-    try { if (req.session) req.session = null; } catch (e) { console.error('error clearing cookie-session', e); }
+    if (req.session) req.session = null;
     return res.json({ ok: true });
   } catch (err) {
     console.error('logout error', err);

@@ -53,7 +53,8 @@ body{
   padding:14px 0;
 }
 .branding{ display:flex; align-items:center; gap:12px; }
-.logo{ font-weight:800; color:var(--primary); font-size:20px; text-decoration:none; }
+.logo{ font-weight:800; color:var(--primary); font-size:20px; text-decoration:none; display:flex; gap:10px; align-items:center; }
+.logo .mark{ width:40px; height:40px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; color:#fff; background:linear-gradient(180deg,var(--primary),var(--primary-600)); box-shadow: 0 6px 20px rgba(38,18,14,0.06);}
 .site-sub{ color:var(--muted); font-size:13px; }
 
 /* Header search (placed in header) */
@@ -73,7 +74,7 @@ body{
 .site-nav{ display:flex; gap:10px; align-items:center; }
 .nav-link{ text-decoration:none; color:var(--text); padding:8px 10px; border-radius:8px; font-weight:700; }
 #link-register{ background:transparent; border:1px solid var(--border); color:var(--primary); padding:7px 12px; border-radius:20px; }
-#link-login{ background:linear-gradient(180deg,var(--primary),var(--primary-600)); color:#fff; padding:8px 12px; border-radius:24px; font-weight:800; }
+#link-login{ background:linear-gradient(180deg,var(--primary),var(--primary-600)); color:#fff; padding:8px 12px; border-radius:24px; font-weight:800; text-decoration:none; }
 
 /* Main layout */
 .main-wrap{ display:flex; gap:24px; align-items:flex-start; padding:22px 0; }
@@ -110,7 +111,7 @@ body{
 }
 
 /* Buttons */
-.btn{ display:inline-block; padding:8px 12px; border-radius:8px; background:var(--primary); color:#fff; text-decoration:none; font-weight:700; }
+.btn{ display:inline-block; padding:8px 12px; border-radius:8px; background:var(--primary); color:#fff; text-decoration:none; font-weight:700; border:none; cursor:pointer; }
 .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--text); padding:6px 10px; border-radius:8px; }
 
 /* helper elements */
@@ -133,7 +134,13 @@ body{
 /* comments area */
 #comments-list { max-height: 320px; overflow:auto; padding:6px 0; }
 
-/* responsive */
+/* small utilities */
+.row{ display:flex; gap:8px; align-items:center; }
+
+/* footer */
+.site-footer{ color:var(--muted); font-size:13px; text-align:center; padding:24px 0; }
+
+/* Responsive */
 @media(max-width:1100px){
   .main-wrap{ flex-direction:column; }
   .sidebar{ width:100%; flex:0 0 auto; }
@@ -144,3 +151,12 @@ body{
   .header-inner{ flex-direction:column; align-items:flex-start; gap:8px; }
   .header-search{ width:100%; margin:0; max-width:none; }
 }
+
+/* Small tweaks for login prompt card used on index */
+.hero-cta{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  align-items:flex-start;
+}
+.hero-cta .btn{ padding:10px 14px; border-radius:10px; }

@@ -382,26 +382,25 @@ document.addEventListener('DOMContentLoaded', () => {
     inlineLogin.classList.add('hidden');
     inlineLogin.setAttribute('aria-hidden', 'true');
   });
-  inlineLoginForm && inlineLoginForm.addEventListener('submit', async (e) => {
+  // Inline login: only bind AJAX if form does not opt-out
+if (inlineLoginForm && !inlineLoginForm.dataset.noAjax) {
+  inlineLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(inlineLoginForm);
     const payload = { username: fd.get('username'), password: fd.get('password') };
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
-        credentials: 'include', // ensure cookie is included
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const json = await res.json().catch(()=>null);
       if (res.ok && json && json.ok) {
-        // If admin -> redirect to admin.html
-        try {
-          if (json.user && json.user.role === 'admin') {
-            window.location.href = '/admin.html';
-            return;
-          }
-        } catch (e) { /* ignore */ }
+        if (json.user && json.user.role === 'admin') {
+          window.location.href = '/admin';
+          return;
+        }
         inlineLogin.classList.add('hidden');
         inlineLogin.setAttribute('aria-hidden', 'true');
         await loadUser();
@@ -412,6 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Lỗi mạng, thử lại');
     }
   });
+}
 
   avatarBtn && avatarBtn.addEventListener('click', (e) => {
     e.stopPropagation();

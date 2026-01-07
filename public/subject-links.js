@@ -852,33 +852,32 @@
     }
 
     // login form submit -> AJAX
-    if (LOGIN_FORM) {
-      LOGIN_FORM.addEventListener('submit', safe(async function(e){
-        e.preventDefault();
-        const f = new FormData(LOGIN_FORM);
-        const payload = { username: (f.get('username')||f.get('email')||''), password: f.get('password')||'' };
-        const btn = LOGIN_FORM.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
-        // use callJson with path; callJson prefixes API_BASE if set
-        const r = await callJson('/api/login', { method: 'POST', body: payload });
-        if (btn) btn.disabled = false;
-        if (r.ok && r.json && r.json.ok) {
-          // Nếu là admin => chuyển sang trang admin.html
-          try {
-            if (r.json.user && r.json.user.role === 'admin') {
-              window.location.href = '/admin.html';
-              return;
-            }
-          } catch(e){ /* ignore */ }
-          showLoggedIn(r.json.user);
-          document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
-          if (typeof closeLoginModal === 'function') try { closeLoginModal(); } catch(e){}
-        } else {
-          const msg = (r.json && (r.json.error || r.json.message)) ? (r.json.error || r.json.message) : (r.text||'Đăng nhập thất bại');
-          alert('Đăng nhập thất bại: ' + msg);
+    // login form submit -> AJAX ONLY if form doesn't opt-out (data-no-ajax)
+if (LOGIN_FORM && !LOGIN_FORM.dataset.noAjax) {
+  LOGIN_FORM.addEventListener('submit', safe(async function(e){
+    e.preventDefault();
+    const f = new FormData(LOGIN_FORM);
+    const payload = { username: (f.get('username')||f.get('email')||''), password: f.get('password')||'' };
+    const btn = LOGIN_FORM.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    // use callJson with path; callJson prefixes API_BASE if set
+    const r = await callJson('/api/login', { method: 'POST', body: payload });
+    if (btn) btn.disabled = false;
+    if (r.ok && r.json && r.json.ok) {
+      try {
+        if (r.json.user && r.json.user.role === 'admin') {
+          window.location.href = '/admin';
+          return;
         }
-      }));
+      } catch(e){}
+      showLoggedIn(r.json.user);
+      document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
+      if (typeof closeLoginModal === 'function') try { closeLoginModal(); } catch(e){}
+    } else {
+      const msg = (r.json && (r.json.error || r.json.message)) ? (r.json.error || r.json.message) : (r.text||'Đăng nhập thất bại');
+      alert('Đăng nhập thất bại: ' + msg);
     }
-
+  }));
+}
     // register form submit -> AJAX
     if (REGISTER_FORM) {
       REGISTER_FORM.addEventListener('submit', safe(async function(e){

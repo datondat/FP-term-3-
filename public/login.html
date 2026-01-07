@@ -24,8 +24,8 @@
     <div class="note">Đăng nhập để truy cập tài liệu và tính năng quản lý.</div>
     <div style="height:12px"></div>
 
-    <!-- Plain form submit only (no AJAX). Server will redirect on success. -->
-    <form id="loginForm" action="/api/login" method="POST" accept-charset="utf-8" novalidate>
+    <!-- CHỈ 1 nút submit. data-no-ajax="true" bảo JS không chuyển thành AJAX -->
+    <form id="loginForm" action="/api/login" method="POST" data-no-ajax="true" novalidate>
       <label>
         <div class="small">Tên đăng nhập</div>
         <input id="username" name="username" type="text" autocomplete="username" required />
@@ -35,7 +35,7 @@
         <input id="password" name="password" type="password" autocomplete="current-password" required />
       </label>
 
-      <!-- hidden next param so server can redirect back after login -->
+      <!-- hidden next param to tell server where to redirect after login -->
       <input type="hidden" name="next" id="nextInput" value="/" />
 
       <div class="row">
@@ -51,7 +51,7 @@
   </div>
 
   <script>
-    // Only set the hidden next param (no AJAX). Keep JS minimal to avoid interfering.
+    // Minimal JS: chỉ set next; không chặn submit (form sẽ POST)
     (function(){
       const params = new URLSearchParams(window.location.search);
       let next = params.get('next') || '/';
@@ -64,7 +64,7 @@
       } catch(e){}
       document.getElementById('nextInput').value = next;
 
-      // Optional UX: show basic client-side validation message
+      // UX: validate required fields before allowing browser submit
       const form = document.getElementById('loginForm');
       const msgEl = document.getElementById('loginMessage');
       form.addEventListener('submit', function (e) {
