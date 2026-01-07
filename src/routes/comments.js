@@ -1,10 +1,7 @@
 'use strict';
 /**
- * src/routes/comments.js
- * GET  /api/comments?fileId=...
- * POST /api/comments
- *
- * Requires src/db.js exporting { pool }.
+ * DEBUG version: returns error message + trimmed stack on 500 to help diagnose quickly.
+ * Replace with production version after debugging.
  */
 
 const express = require('express');
@@ -37,12 +34,12 @@ router.get('/', async (req, res) => {
     return res.json({ ok: true, comments: r.rows.map(formatRow) });
   } catch (err) {
     console.error('GET /api/comments error', err && (err.stack || err));
-    return res.status(500).json({ ok: false, error: 'server_error' });
+    return res.status(500).json({ ok: false, error: 'server_error', message: String(err && err.message), stack: (err && err.stack) ? String(err.stack).split('\n').slice(0,8) : undefined });
   }
 });
 
 /* POST /api/comments
-   body: { fileId, content, author? }
+   body: { fileId, content, author? } (JSON)
 */
 router.post('/', async (req, res) => {
   try {
@@ -53,12 +50,8 @@ router.post('/', async (req, res) => {
     const fid = fileId ? String(fileId) : null;
     const userId = req.session && req.session.userId ? req.session.userId : null;
 
-    let authorToSave = null;
-    if (userId) {
-      authorToSave = author && String(author).trim() ? String(author).trim() : null;
-    } else {
-      authorToSave = author && String(author).trim() ? String(author).trim() : 'Khách';
-    }
+    const authorToSave = userId ? (author && String(author).trim() ? String(author).trim() : null)
+                                : (author && String(author).trim() ? String(author).trim() : 'Khách');
 
     const sql = `
       INSERT INTO comments (file_id, user_id, author, content)
@@ -67,11 +60,13 @@ router.post('/', async (req, res) => {
     `;
     const params = [fid, userId, authorToSave, String(content).trim()];
     const r = await pool.query(sql, params);
-    const inserted = r.rows[0];
-    return res.json({ ok: true, comment: formatRow(inserted) });
+    return res.json({ ok: true, comment: formatRow(r.rows[0]) });
   } catch (err) {
+    // Log full stack to server console and return trimmed stack/message to client for debugging
     console.error('POST /api/comments error', err && (err.stack || err));
-    return res.status(500).json({ ok: false, error: 'server_error' });
+    const message = err && err.message ? String(err.message) : 'unknown_error';
+    const stack = err && err.stack ? String(err.stack).split('\n').slice(0,12) : undefined;
+    return res.status(500).json({ ok: false, error: 'server_error', message, stack });
   }
 });
 
