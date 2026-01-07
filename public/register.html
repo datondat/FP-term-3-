@@ -5,18 +5,267 @@
   <title>Đăng ký — FP</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/main.css">
+  <style>
+    /* Override styles for register page - matching login theme */
+    body {
+      background: linear-gradient(135deg, #e8eaf6 0%, #f3e5f5 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Animated background overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(244,143,177,0.06) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(121,134,203,0.06) 0%, transparent 50%);
+      animation: floatBg 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes floatBg {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -30px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+    }
+
+    main.container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 200px);
+      padding-top: 40px;
+      padding-bottom: 40px;
+    }
+
+    .auth-box {
+      width: 100%;
+      max-width: 520px;
+      padding: 32px;
+      background: #fefefe;
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(121,134,203,0.15);
+      border: 1px solid rgba(121,134,203,0.1);
+      transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .auth-box:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 30px 80px rgba(121,134,203,0.2);
+    }
+
+    .auth-box h2 {
+      margin: 0 0 8px 0;
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7986cb 0%, #f48fb1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+
+    .auth-box form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .auth-box label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #37474f;
+      font-size: 14px;
+    }
+
+    .auth-box .form-input,
+    .auth-box input[type="text"],
+    .auth-box input[type="password"],
+    .auth-box input[type="email"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: linear-gradient(white, white) padding-box,
+                  linear-gradient(135deg, #7986cb, #f48fb1) border-box;
+      font-size: 15px;
+      font-family: inherit;
+      color: #37474f;
+      outline: none;
+      transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 12px rgba(121,134,203,0.08);
+    }
+
+    .auth-box .form-input:focus,
+    .auth-box input:focus {
+      box-shadow: 0 6px 30px rgba(121,134,203,0.15), 0 0 20px rgba(244,143,177,0.15);
+      transform: translateY(-2px);
+      outline: 3px solid rgba(121,134,203,0.2);
+      outline-offset: 3px;
+    }
+
+    .auth-box .form-input::placeholder,
+    .auth-box input::placeholder {
+      color: #78909c;
+      font-weight: 500;
+    }
+
+    .auth-box .btn,
+    .auth-box button[type="submit"] {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #7986cb 0%, #f48fb1 100%);
+      background-size: 200% 200%;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 20px rgba(121,134,203,0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-box .btn::before,
+    .auth-box button[type="submit"]::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transform: translate(-50%, -50%);
+      transition: width 500ms ease, height 500ms ease;
+      pointer-events: none;
+    }
+
+    .auth-box .btn:hover::before,
+    .auth-box button[type="submit"]:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .auth-box .btn:hover,
+    .auth-box button[type="submit"]:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 35px rgba(121,134,203,0.35), 0 0 20px rgba(244,143,177,0.2);
+      background-position: 100% 0;
+    }
+
+    .auth-box .btn:active,
+    .auth-box button[type="submit"]:active {
+      transform: translateY(-1px) scale(1.01);
+    }
+
+    .auth-box a {
+      color: #7986cb;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 200ms ease;
+      position: relative;
+    }
+
+    .auth-box a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #7986cb, #f48fb1);
+      transition: width 350ms ease;
+    }
+
+    .auth-box a:hover {
+      color: #5c6bc0;
+      transform: translateY(-1px);
+    }
+
+    .auth-box a:hover::after {
+      width: 100%;
+    }
+
+    /* Note text */
+    .auth-box > div[style*="margin-top"] {
+      margin-top: 16px !important;
+      padding: 12px 16px;
+      background: rgba(121,134,203,0.05);
+      border-radius: 10px;
+      border-left: 3px solid #7986cb;
+      font-size: 14px !important;
+      color: #78909c !important;
+      line-height: 1.5;
+    }
+
+    /* Site header simplification for auth pages */
+    .site-header {
+      background: rgba(254,254,254,0.92);
+      backdrop-filter: blur(15px) saturate(150%);
+      box-shadow: 0 4px 20px rgba(121,134,203,0.08);
+    }
+
+    /* Footer */
+    .site-footer {
+      background: transparent;
+      text-align: center;
+      padding: 20px 0;
+      color: #78909c;
+    }
+
+    /* Responsive */
+    @media(max-width: 600px) {
+      .auth-box {
+        margin: 24px 16px;
+        padding: 24px;
+      }
+
+      .auth-box h2 {
+        font-size: 24px;
+      }
+
+      .auth-box .form-input,
+      .auth-box input {
+        font-size: 16px; /* Prevent zoom on iOS */
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0ms !important;
+        animation-duration: 0ms !important;
+      }
+      body::before {
+        animation: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="container header-inner">
       <div class="branding">
         <a href="/" class="logo">FP</a>
+        <div class="site-sub">Hệ thống học tập</div>
       </div>
-      <nav class="site-nav" id="nav">
-        <a href="register.html" id="link-register" class="nav-link">Đăng ký</a>
-        <a href="login.html" id="link-login" class="nav-link">Đăng nhập</a>
-        <a href="#" id="link-logout" class="nav-link" style="display:none">Đăng xuất</a>
-      </nav>
     </div>
   </header>
 
@@ -24,23 +273,32 @@
     <div class="auth-box">
       <h2>Đăng ký</h2>
       <form id="register-form" method="post" action="/api/register">
-        <label for="name">Họ & tên</label>
-        <input id="name" name="name" type="text" class="form-input" />
-        <label for="username">Tên đăng nhập</label>
-        <input id="username" name="username" type="text" autocomplete="username" required class="form-input" />
-        <label for="password">Mật khẩu</label>
-        <input id="password" name="password" type="password" autocomplete="new-password" required class="form-input" />
-        <div style="display:flex;gap:8px;align-items:center">
+        <div>
+          <label for="name">Họ & tên</label>
+          <input id="name" name="name" type="text" class="form-input" placeholder="Nguyễn Văn A" />
+        </div>
+        
+        <div>
+          <label for="username">Tên đăng nhập</label>
+          <input id="username" name="username" type="text" autocomplete="username" required class="form-input" placeholder="username123" />
+        </div>
+        
+        <div>
+          <label for="password">Mật khẩu</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required class="form-input" placeholder="••••••••" />
+        </div>
+        
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px;">
           <button type="submit" class="btn">Đăng ký</button>
           <a href="login.html" style="margin-left:auto">Đã có tài khoản?</a>
         </div>
       </form>
-      <div style="margin-top:12px;color:var(--muted);font-size:0.9rem">Form gửi bằng AJAX; sau khi đăng ký thành công sẽ tự login và cập nhật navbar.</div>
+    
     </div>
   </main>
 
   <footer class="site-footer">
-    <div class="container"><small>© FP</small></div>
+    <div class="container"><small>© FP — Hệ thống học tập</small></div>
   </footer>
 
   <script>

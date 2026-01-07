@@ -5,39 +5,506 @@
   <title>Admin — FP</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root{--bg:#f7f7f9;--card:#fff;--muted:#6b6f76;--accent:#0b79d0;--danger:#d04646}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
-    header{height:56px;background:#fff;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;padding:0 18px;gap:12px}
-    header .logo{font-weight:700;color:var(--accent);text-decoration:none}
-    .container{max-width:1200px;margin:18px auto;padding:0 16px}
-    .layout{display:flex;gap:18px}
-    .sidebar{width:260px;background:var(--card);border-radius:10px;padding:12px 8px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
-    .sidebar h3{margin:6px 12px;color:#222;font-size:15px}
-    .nav-item{display:block;padding:10px 12px;margin:6px;border-radius:8px;color:#222;text-decoration:none;cursor:pointer}
-    .nav-item.active{background:linear-gradient(90deg,rgba(11,121,208,.06),rgba(11,121,208,.03));border:1px solid rgba(11,121,208,.08);font-weight:700}
-    .main{flex:1;min-height:520px;display:flex;flex-direction:column;gap:12px}
-    .panel{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.04);display:none}
-    .panel.active{display:block}
-    .panel h2{margin:0 0 12px 0;font-size:18px}
-    .muted{color:var(--muted);font-size:13px}
-    /* upload form */
-    .upload-area{border:1px dashed rgba(0,0,0,.08);padding:12px;border-radius:8px;background:linear-gradient(180deg,#fff,#fbfdff)}
-    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;border:none;cursor:pointer}
-    .btn.ghost{background:#fff;color:var(--accent);border:1px solid rgba(11,121,208,.14)}
-    .list{margin-top:12px}
-    table{width:100%;border-collapse:collapse;font-size:14px}
-    table th, table td{padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.04);text-align:left}
-    .actions button{margin-right:6px}
-    .danger{background:var(--danger);border:none;color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer}
-    .note{font-size:13px;color:var(--muted)}
-    /* responsive */
-    @media (max-width:900px){
-      .layout{flex-direction:column}
-      .sidebar{width:100%;display:flex;overflow:auto}
-      .sidebar .nav-item{flex:1;white-space:nowrap}
+    :root{
+      /* Enhanced Palette - giống CSS gốc */
+      --bg: linear-gradient(135deg, #e8eaf6 0%, #f3e5f5 100%);
+      --bg-solid: #f5f7fb;
+      --card: #fefefe;
+      --card-alt: #fafbfc;
+      --muted: #78909c;
+      --text: #37474f;
+      --primary: #7986cb;
+      --primary-600: #5c6bc0;
+      --primary-400: #9fa8da;
+      --accent: #f48fb1;
+      --danger: #ef5350;
+      --success: #66bb6a;
+      --border: #e3f2fd;
+      --radius: 12px;
+      --small-radius: 8px;
+      --shadow-soft: 0 20px 60px rgba(121,134,203,0.1);
+      --shadow-subtle: 0 10px 30px rgba(121,134,203,0.06);
+      --transition-fast: 200ms;
+      --transition-med: 350ms;
+      --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    select, input[type="file"] { padding:6px 8px; border-radius:6px; border:1px solid #ddd; background:#fff; }
+
+    /* Reset & Base */
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      margin:0;
+      font-family:var(--font-sans);
+      background: var(--bg);
+      background-attachment: fixed;
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.5;
+      font-size:15px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Animated background overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(244,143,177,0.06) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(121,134,203,0.06) 0%, transparent 50%);
+      animation: floatBg 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @keyframes floatBg {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -30px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    /* Header với glassmorphism */
+    header{
+      height:60px;
+      background: rgba(254,254,254,0.92);
+      backdrop-filter: blur(15px) saturate(150%);
+      -webkit-backdrop-filter: blur(15px) saturate(150%);
+      border-bottom:1px solid rgba(121,134,203,0.08);
+      box-shadow: 0 4px 20px rgba(121,134,203,0.08);
+      display:flex;
+      align-items:center;
+      padding:0 24px;
+      gap:12px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    header .logo{
+      font-weight:800;
+      font-size:24px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration:none;
+      transition: transform var(--transition-fast) ease;
+    }
+    header .logo:hover{
+      transform: scale(1.05);
+    }
+
+    #link-logout{
+      color:var(--danger);
+      text-decoration:none;
+      font-weight:600;
+      padding:8px 14px;
+      border-radius:8px;
+      transition: all var(--transition-fast) ease;
+    }
+    #link-logout:hover{
+      background: rgba(239,83,80,0.1);
+      transform: translateY(-2px);
+    }
+
+    /* Container */
+    .container{
+      max-width:1400px;
+      margin:24px auto;
+      padding:0 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Layout */
+    .layout{
+      display:flex;
+      gap:20px;
+      align-items: flex-start;
+    }
+
+    /* Sidebar với card effect */
+    .sidebar{
+      width:280px;
+      background:var(--card);
+      backdrop-filter: blur(10px);
+      border-radius:var(--radius);
+      padding:16px 12px;
+      box-shadow:var(--shadow-soft);
+      position: sticky;
+      top: 80px;
+      transition: all var(--transition-med) ease;
+      border: 1px solid var(--border);
+    }
+    .sidebar:hover{
+      box-shadow: 0 25px 70px rgba(121,134,203,0.12);
+    }
+
+    .sidebar h3{
+      margin:8px 12px 12px 12px;
+      color:var(--text);
+      font-size:16px;
+      font-weight:700;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Nav items với hover effects */
+    .nav-item{
+      display:block;
+      padding:12px 14px;
+      margin:6px;
+      border-radius:var(--small-radius);
+      color:var(--text);
+      text-decoration:none;
+      cursor:pointer;
+      font-weight:600;
+      transition: all var(--transition-med) cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(121,134,203,0.15), transparent);
+      transform: translate(-50%, -50%);
+      transition: all var(--transition-med) ease;
+      pointer-events: none;
+    }
+    .nav-item:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    .nav-item:hover{
+      background:rgba(121,134,203,0.08);
+      transform: translateX(4px);
+    }
+    .nav-item.active{
+      background: linear-gradient(135deg, rgba(121,134,203,0.12), rgba(244,143,177,0.08));
+      border:2px solid transparent;
+      box-shadow: 0 4px 15px rgba(121,134,203,0.15);
+      font-weight:700;
+      color: var(--primary-600);
+      position: relative;
+    }
+    .nav-item.active::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      padding: 2px;
+      border-radius: var(--small-radius);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* Main content */
+    .main{
+      flex:1;
+      min-height:600px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    /* Panel với animation */
+    .panel{
+      background:var(--card);
+      backdrop-filter: blur(10px);
+      border-radius:var(--radius);
+      padding:24px;
+      box-shadow:var(--shadow-soft);
+      border: 1px solid var(--border);
+      display:none;
+      transition: all var(--transition-med) ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(121,134,203,0.03) 0%, rgba(244,143,177,0.03) 100%);
+      opacity: 1;
+      pointer-events: none;
+    }
+    .panel.active{
+      display:block;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel h2{
+      margin:0 0 16px 0;
+      font-size:22px;
+      font-weight:700;
+      color:var(--text);
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel h3{
+      font-size:16px;
+      font-weight:700;
+      color:var(--text);
+      margin:16px 0 12px 0;
+    }
+
+    .muted, .note{
+      color:var(--muted);
+      font-size:13px;
+      font-weight:500;
+      line-height:1.6;
+    }
+
+    /* Upload area */
+    .upload-area{
+      border:2px dashed rgba(121,134,203,0.2);
+      padding:20px;
+      border-radius:var(--small-radius);
+      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+      transition: all var(--transition-med) ease;
+      position: relative;
+      z-index: 1;
+    }
+    .upload-area:hover{
+      border-color: var(--primary-400);
+      box-shadow: 0 8px 25px rgba(121,134,203,0.1);
+    }
+
+    /* Buttons */
+    .btn{
+      display:inline-block;
+      padding:10px 16px;
+      border-radius:10px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      background-size: 200% 200%;
+      color:#fff;
+      text-decoration:none;
+      border:none;
+      cursor:pointer;
+      font-weight:700;
+      font-size:14px;
+      transition: all var(--transition-med) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 15px rgba(121,134,203,0.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transform: translate(-50%, -50%);
+      transition: width 500ms ease, height 500ms ease;
+      pointer-events: none;
+    }
+    .btn:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    .btn:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(121,134,203,0.3), 0 0 15px rgba(244,143,177,0.15);
+      background-position: 100% 0;
+    }
+    .btn:active{
+      transform: translateY(0);
+    }
+
+    .btn.ghost{
+      background:transparent;
+      color:var(--primary);
+      border:2px solid rgba(121,134,203,0.2);
+      box-shadow: none;
+    }
+    .btn.ghost::before {
+      background: rgba(121,134,203,0.1);
+    }
+    .btn.ghost:hover{
+      background: rgba(121,134,203,0.08);
+      border-color: var(--primary);
+      box-shadow: 0 8px 25px rgba(121,134,203,0.15);
+    }
+
+    .danger{
+      background: linear-gradient(135deg, var(--danger) 0%, #e57373 100%);
+      border:none;
+      color:#fff;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      transition: all var(--transition-fast) ease;
+      box-shadow: 0 4px 12px rgba(239,83,80,0.25);
+    }
+    .danger:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(239,83,80,0.35);
+    }
+
+    /* List & Table */
+    .list{
+      margin-top:16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+      background: rgba(255,255,255,0.6);
+      border-radius: var(--small-radius);
+      overflow: hidden;
+    }
+    table th{
+      padding:12px 14px;
+      border-bottom:2px solid rgba(121,134,203,0.15);
+      text-align:left;
+      font-weight:700;
+      color:var(--text);
+      background: linear-gradient(135deg, rgba(121,134,203,0.08), rgba(244,143,177,0.05));
+    }
+    table td{
+      padding:10px 14px;
+      border-bottom:1px solid rgba(121,134,203,0.06);
+      transition: background var(--transition-fast) ease;
+    }
+    table tr:hover td{
+      background: rgba(121,134,203,0.04);
+    }
+
+    .actions button{
+      margin-right:8px;
+      margin-bottom: 4px;
+    }
+
+    /* Form controls */
+    select, input[type="file"], input[type="text"], input[type="email"]{
+      padding:10px 12px;
+      border-radius:8px;
+      border:2px solid rgba(121,134,203,0.15);
+      background:#fff;
+      font-size:14px;
+      transition: all var(--transition-fast) ease;
+      font-family: var(--font-sans);
+    }
+    select:focus, input:focus{
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 4px 15px rgba(121,134,203,0.15);
+    }
+
+    /* Utilities */
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    /* Responsive */
+    @media (max-width:1100px){
+      .container{
+        max-width: 100%;
+      }
+      .sidebar{
+        width: 240px;
+      }
+    }
+
+    @media (max-width:900px){
+      .layout{
+        flex-direction:column;
+      }
+      .sidebar{
+        width:100%;
+        display:flex;
+        overflow-x:auto;
+        position: static;
+        padding: 12px;
+      }
+      .sidebar h3{
+        display: none;
+      }
+      .sidebar .nav-item{
+        flex:1;
+        white-space:nowrap;
+        min-width: 120px;
+        text-align: center;
+      }
+      .sidebar .note{
+        display: none;
+      }
+      header{
+        padding: 0 16px;
+      }
+      .panel{
+        padding: 18px;
+      }
+    }
+
+    @media (max-width:600px){
+      .container{
+        padding: 0 12px;
+        margin: 16px auto;
+      }
+      header{
+        height: 56px;
+      }
+      header .logo{
+        font-size: 20px;
+      }
+      .row{
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .row > *{
+        width: 100%;
+      }
+      table{
+        font-size: 13px;
+      }
+      table th, table td{
+        padding: 8px 10px;
+      }
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{
+        transition-duration: 0ms !important;
+        animation-duration: 0ms !important;
+      }
+      body::before{
+        animation: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -45,7 +512,7 @@
     <a class="logo" href="/">FP Admin</a>
     <div style="flex:1"></div>
     <nav>
-      <a id="link-logout" href="#" style="color:#c44;text-decoration:none">Đăng xuất</a>
+      <a id="link-logout" href="#">Đăng xuất</a>
     </nav>
   </header>
 
@@ -98,7 +565,7 @@
         <section id="panel-comments" class="panel" aria-live="polite">
           <h2>Quản lý bình luận</h2>
           <div class="note">Xem, duyệt hoặc xoá bình luận. Chọn nhiều bình luận và ẩn/hiện cùng lúc.</div>
-          <div style="margin:8px 0">
+          <div style="margin:16px 0">
             <button id="approveSelected" class="btn ghost" type="button">Hiện (Duyệt) chọn</button>
             <button id="hideSelected" class="btn ghost" type="button">Ẩn (Bỏ duyệt) chọn</button>
             <button id="refreshComments" class="btn ghost" type="button">Làm mới</button>
@@ -110,7 +577,7 @@
         <section id="panel-users" class="panel" aria-live="polite">
           <h2>Quản lý người dùng</h2>
           <div class="note">Thay đổi quyền, khoá/mở khóa hoặc xoá người dùng.</div>
-          <div style="margin:8px 0">
+          <div style="margin:16px 0">
             <button id="refreshUsers" class="btn ghost" type="button">Làm mới</button>
           </div>
           <div class="list" id="usersList">Đang tải...</div>

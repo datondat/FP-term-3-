@@ -1,34 +1,27 @@
 :root{
-  /* Enhanced Palette với gradient colors */
-  --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --bg-alt: #f8fafc;
-  --card: rgba(255, 255, 255, 0.95);
-  --card-hover: rgba(255, 255, 255, 1);
-  --muted: #64748b;
-  --text: #0f172a;
-  --primary: #6366f1;        /* Indigo */
-  --primary-600: #4f46e5;
-  --primary-400: #818cf8;
-  --accent: #ec4899;         /* Pink accent */
-  --accent-light: #f472b6;
-  --success: #10b981;
-  --border: #e2e8f0;
-  --soft-border: rgba(99,102,241,0.12);
-  --radius: 16px;
-  --small-radius: 12px;
-  --shadow-soft: 0 20px 60px rgba(99,102,241,0.15);
-  --shadow-subtle: 0 10px 30px rgba(99,102,241,0.08);
-  --shadow-glow: 0 0 40px rgba(236,72,153,0.3);
-  --container-padding: 24px;
+  /* Enhanced Palette - Màu dịu, pastel hơn, nền không trắng */
+  --bg: linear-gradient(135deg, #e8eaf6 0%, #f3e5f5 100%);
+  --bg-solid: #f5f7fb;
+  --card: #fefefe;
+  --card-alt: #fafbfc;
+  --muted: #78909c;
+  --text: #37474f;
+  --primary: #7986cb;        /* Indigo nhạt hơn */
+  --primary-600: #5c6bc0;
+  --primary-400: #9fa8da;
+  --accent: #f48fb1;         /* Pink pastel */
+  --border: #e3f2fd;
+  --soft-border: rgba(121,134,203,0.15);
+  --radius: 12px;
+  --small-radius: 8px;
+  --shadow-soft: 0 20px 60px rgba(121,134,203,0.1);
+  --shadow-subtle: 0 10px 30px rgba(121,134,203,0.06);
+  --shadow-glow: 0 0 30px rgba(244,143,177,0.2);
+  --container-padding: 20px;
   --max-width: 1200px;
   --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --transition-fast: 200ms;
   --transition-med: 350ms;
-  --transition-slow: 500ms;
-
-  /* pill width: change here if you want different fixed size (default 60px).
-     If you prefer percentage, set e.g. --pill-width: 60%; */
-  --pill-width: 60px;
 }
 
 /* Reset & base */
@@ -41,13 +34,13 @@ body{
   background-attachment: fixed;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  line-height:1.6;
+  line-height:1.5;
   font-size:15px;
   position: relative;
   overflow-x: hidden;
 }
 
-/* Animated background particles */
+/* Animated background overlay - dịu hơn */
 body::before {
   content: '';
   position: fixed;
@@ -56,8 +49,8 @@ body::before {
   width: 100%;
   height: 100%;
   background: 
-    radial-gradient(circle at 20% 50%, rgba(236,72,153,0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(99,102,241,0.1) 0%, transparent 50%);
+    radial-gradient(circle at 20% 50%, rgba(244,143,177,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(121,134,203,0.06) 0%, transparent 50%);
   animation: floatBg 20s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
@@ -79,16 +72,16 @@ body::before {
   z-index: 1;
 }
 
-/* Links with gradient hover */
+/* Links với gradient underline */
 a{
   color:inherit; 
   text-decoration:none; 
-  transition: all var(--transition-fast) ease;
+  transition: color var(--transition-fast) ease, transform var(--transition-fast) ease;
   position: relative;
 }
 a:hover{
   color:var(--primary);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 a::after {
   content: '';
@@ -104,44 +97,76 @@ a:hover::after {
   width: 100%;
 }
 
-/* Header với glassmorphism */
+/* Header với glassmorphism - nền trắng kem */
 .site-header{
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom:1px solid rgba(99,102,241,0.1);
-  box-shadow: 0 8px 32px rgba(99,102,241,0.1);
+  background: rgba(254,254,254,0.92);
+  backdrop-filter: blur(15px) saturate(150%);
+  -webkit-backdrop-filter: blur(15px) saturate(150%);
+  border-bottom:1px solid rgba(121,134,203,0.08);
+  box-shadow: 0 4px 20px rgba(121,134,203,0.08);
   position:sticky; 
   top:0; 
   z-index:1000;
-  animation: slideDown 0.5s ease-out;
 }
-
-@keyframes slideDown {
-  from { transform: translateY(-100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
 .header-inner{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:16px;
-  padding:16px 0;
+  gap:20px;
+  padding:14px 0;
+  max-width: 100%;
 }
 
+/* Logo và sub wrapper */
+.header-inner > div:first-child,
+.branding{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Search area - chiếm không gian giữa */
+.header-search{
+  flex: 1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Auth area - bên phải */
+#auth-area{
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.nav-link{
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all var(--transition-fast) ease;
+  white-space: nowrap;
+}
+
+.nav-link:hover{
+  background: rgba(121,134,203,0.1);
+}
 .logo{
   font-weight:800;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-size:24px;
+  font-size:28px;
   text-decoration:none;
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:10px;
   transition: transform var(--transition-fast) ease;
+  line-height: 1;
 }
 .logo:hover {
   transform: scale(1.05);
@@ -149,33 +174,33 @@ a:hover::after {
 .logo::after {
   display: none; /* Remove underline for logo */
 }
-
 .site-sub{
   color:var(--muted);
-  font-size:13px;
-  font-weight: 500;
+  font-size:15px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 /* Search với glow effect */
 .header-search{
-  flex:1;
-  max-width:680px;
-  margin:0 20px;
+  flex: 1;
+  max-width: 600px;
+  margin: 0 auto;
 }
 .header-search input[type="search"]{
   width:100%;
-  padding:14px 20px;
+  padding:11px 18px;
   border-radius:999px;
   border:2px solid transparent;
   background: linear-gradient(white, white) padding-box,
               linear-gradient(135deg, var(--primary), var(--accent)) border-box;
-  font-size:15px;
+  font-size:14px;
   outline:none;
   transition: all var(--transition-med) ease;
-  box-shadow: 0 4px 20px rgba(99,102,241,0.08);
+  box-shadow: 0 2px 12px rgba(121,134,203,0.08);
 }
 .header-search input[type="search"]:focus{
-  box-shadow: 0 8px 40px rgba(99,102,241,0.2), var(--shadow-glow);
+  box-shadow: 0 6px 30px rgba(121,134,203,0.15), 0 0 20px rgba(244,143,177,0.15);
   transform: translateY(-2px);
 }
 .header-search input[type="search"]::placeholder {
@@ -185,20 +210,22 @@ a:hover::after {
 
 /* Auth area */
 #auth-area { 
-  display:flex; 
-  gap:12px; 
-  align-items:center; 
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
-/* Card với hover lift effect */
+/* Card với hover lift - nền cream nhẹ */
 .card{
   background: var(--card);
   backdrop-filter: blur(10px);
   border-radius:var(--radius);
-  padding:24px;
+  padding:18px;
   border:1px solid var(--border);
   box-shadow:var(--shadow-soft);
-  margin-bottom:24px;
+  margin-bottom:22px;
   transition: all var(--transition-med) cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -210,20 +237,21 @@ a:hover::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(236,72,153,0.05) 100%);
+  background: linear-gradient(135deg, rgba(121,134,203,0.03) 0%, rgba(244,143,177,0.03) 100%);
   opacity: 0;
   transition: opacity var(--transition-med) ease;
+  pointer-events: none;
 }
 .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 30px 80px rgba(99,102,241,0.2);
-  border-color: rgba(99,102,241,0.3);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 50px rgba(121,134,203,0.12);
+  border-color: rgba(121,134,203,0.2);
 }
 .card:hover::before {
   opacity: 1;
 }
 .card h2,.card h3,.card h4{
-  margin:0 0 12px 0;
+  margin:0 0 8px 0;
   color:var(--text);
   font-weight: 700;
   position: relative;
@@ -238,28 +266,28 @@ a:hover::after {
 /* Grid basics */
 .cards-grid{
   display:grid;
-  gap:20px;
+  gap:14px;
 }
 .grades-wrapper{
-  margin-top:20px;
+  margin-top:14px;
 }
 
-/* Grade panel với animated gradient border */
+/* grade-panel với animated gradient border - nền cream */
 .grade-panel{
   background: var(--card);
   backdrop-filter: blur(10px);
   border:2px solid transparent;
-  border-radius:var(--radius);
-  padding:24px;
+  border-radius:var(--small-radius);
+  padding:18px;
   box-shadow: var(--shadow-subtle);
-  min-height:160px;
+  min-height:140px;
   display:flex;
   flex-direction:column;
-  gap:14px;
+  gap:12px;
   align-items:center;
-  justify-content:center;
+  justify-content:flex-start;
   text-align:center;
-  transition: all var(--transition-med) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-med) cubic-bezier(.2,.9,.3,1);
   cursor:pointer;
   position: relative;
   overflow: hidden;
@@ -277,6 +305,7 @@ a:hover::after {
   transition: opacity var(--transition-med) ease;
   animation: gradientShift 3s ease infinite;
   z-index: 0;
+  pointer-events: none; /* QUAN TRỌNG: không chặn click */
 }
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
@@ -290,24 +319,25 @@ a:hover::after {
   position: absolute;
   inset: 0;
   padding: 2px;
-  border-radius: var(--radius);
+  border-radius: var(--small-radius);
   background: linear-gradient(135deg, var(--primary), var(--accent));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   opacity: 0;
   transition: opacity var(--transition-med) ease;
+  pointer-events: none; /* QUAN TRỌNG: không chặn click */
 }
 .grade-panel:hover{ 
-  transform: translateY(-10px) scale(1.02);
-  box-shadow: 0 25px 70px rgba(99,102,241,0.15), var(--shadow-glow);
+  transform: translateY(-6px); 
+  box-shadow: 0 20px 50px rgba(121,134,203,0.12), 0 0 20px rgba(244,143,177,0.1);
 }
 .grade-panel:hover::after {
   opacity: 1;
 }
 .grade-title{
   font-weight:800;
-  font-size:20px;
+  font-size:18px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -316,44 +346,49 @@ a:hover::after {
   z-index: 1;
 }
 
-/* Selected panel */
+/* selected panel: make it wider */
 .grade-panel.grade-selected{
   border:2px solid var(--primary);
-  box-shadow: 0 30px 80px rgba(99,102,241,0.2), 0 0 0 4px rgba(99,102,241,0.1);
-  transform:scale(1.02);
+  box-shadow: 0 20px 50px rgba(121,134,203,0.15), 0 0 0 3px rgba(121,134,203,0.08);
+  transform:none;
   grid-column: 1 / -1;
-  background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+  background: var(--card-alt);
 }
 .grade-panel.grade-selected::after {
   opacity: 1;
 }
 
-/* Subject list với stagger animation */
+/* subject-list - GIỐNG GỐC */
 .subject-list{
   list-style:none;
-  margin:12px 0 0 0;
+  margin:8px 0 0 0;
   padding:0;
   display:none;
-  gap:14px;
+  gap:12px;
   width:100%;
-  max-width:960px;
+  max-width:920px;
   margin-left:auto;
   margin-right:auto;
+  box-sizing:border-box;
 }
 .subject-list.show-subjects{
   display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap:14px;
-  padding:12px 0;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap:12px;
+  align-items:start;
+  justify-items:center;
+  padding:8px 0;
 }
 .subject-list li{
   width:100%;
-  height:56px;
+  max-width:320px;
+  min-width:140px;
+  height:48px;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:0 16px;
-  border-radius:var(--small-radius);
+  padding:0 12px;
+  border-radius:10px;
   border:2px solid transparent;
   background: linear-gradient(white, white) padding-box,
               linear-gradient(135deg, var(--primary), var(--accent)) border-box;
@@ -387,17 +422,18 @@ a:hover::after {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,0.2), transparent);
+  background: radial-gradient(circle, rgba(121,134,203,0.15), transparent);
   transform: translate(-50%, -50%);
-  transition: all var(--transition-slow) ease;
+  transition: all var(--transition-med) ease;
+  pointer-events: none; /* QUAN TRỌNG */
 }
 .subject-list li:hover::before {
   width: 300px;
   height: 300px;
 }
 .subject-list li:hover{ 
-  transform: translateY(-6px) scale(1.03);
-  box-shadow: 0 15px 50px rgba(99,102,241,0.2), var(--shadow-glow);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(121,134,203,0.15), 0 0 15px rgba(244,143,177,0.1);
 }
 .subject-list li a{
   display:block;
@@ -409,7 +445,7 @@ a:hover::after {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-align:center;
-  padding:14px 0;
+  padding:10px 0;
   position: relative;
   z-index: 1;
 }
@@ -417,22 +453,21 @@ a:hover::after {
   display: none;
 }
 
-/* File grid pills với bounce animation */
+/* file-grid-pill - GIỮ NGUYÊN CHO index.html inline script */
 .file-grid-pill{
   display:flex;
   flex-wrap:wrap;
-  gap:12px;
-  margin-top:16px;
+  gap:10px;
+  margin-top:12px;
   align-items:center;
   justify-content:flex-start;
   opacity:0;
-  transform:translateY(10px);
-  animation: bounceUp 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  transform:translateY(6px);
+  animation: fadeUp .28s ease forwards;
 }
-@keyframes bounceUp {
-  0% { opacity:0; transform:translateY(10px) scale(0.95); }
-  50% { transform:translateY(-5px) scale(1.02); }
-  100% { opacity:1; transform:translateY(0) scale(1); }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
 }
 .file-grid-pill .file-grid-item{
   flex:0 0 auto; 
@@ -440,16 +475,62 @@ a:hover::after {
   align-items:center; 
   justify-content:center;
 }
-.file-grid-pill .btn-file{
-  display:inline-flex;
+
+/* file-grid - CHO index.html inline script - AUTO GRID 150PX */
+.file-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 150px));
+  gap: 12px;
+  margin-top: 12px;
+  justify-content: start;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: fadeUp .28s ease forwards;
+}
+.file-grid .file-grid-item{
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding:12px 20px;
+  justify-content: center;
+  width: 150px;
+}
+
+/* btn-file - CHỈ TRONG .file-grid mới có style đặc biệt 150px - MÀU DỊU */
+.file-grid .btn-file{
+  display: block;
+  width: 150px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background-size: 200% 200%;
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all var(--transition-med) cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 3px 12px rgba(121,134,203,0.2);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* btn-file cho các nơi khác (file-grid-pill) - giữ style gốc */
+.file-grid-pill .btn-file,
+.btn-file{
+  display:inline-block;
+  padding:8px 14px;
   border-radius:999px;
   border:none;
   background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
   background-size: 200% 200%;
-  color:#fff;
+  color:#fff !important;
   font-weight:700;
   text-decoration:none;
   white-space:nowrap;
@@ -459,7 +540,7 @@ a:hover::after {
   box-shadow: 0 8px 25px rgba(99,102,241,0.3);
   position: relative;
 }
-.file-grid-pill .btn-file::before {
+.btn-file::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -469,111 +550,107 @@ a:hover::after {
   border-radius: 50%;
   background: rgba(255,255,255,0.3);
   transform: translate(-50%, -50%);
-  transition: width var(--transition-slow) ease, height var(--transition-slow) ease;
+  transition: width 500ms ease, height 500ms ease;
+  pointer-events: none; /* QUAN TRỌNG */
 }
-.file-grid-pill .btn-file:hover::before {
+.btn-file:hover::before {
   width: 300px;
   height: 300px;
 }
-.file-grid-pill .btn-file:hover{
-  transform: translateY(-6px) scale(1.05);
+.file-grid .btn-file:hover{
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 10px 28px rgba(121,134,203,0.25), 0 0 15px rgba(244,143,177,0.15);
+  background-position: 100% 0;
+}
+.file-grid .btn-file:active{ 
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* Hover cho các btn-file khác */
+.file-grid-pill .btn-file:hover,
+.btn-file:hover{
+  transform: translateY(-4px) scale(1.03);
   box-shadow: 0 20px 60px rgba(99,102,241,0.4), var(--shadow-glow);
   background-position: 100% 0;
 }
-.file-grid-pill .btn-file:active{ 
-  transform: translateY(-2px) scale(1.02);
+.file-grid-pill .btn-file:active,
+.btn-file:active{ 
+  transform: translateY(-1px);
+}
+.btn-file::after{
+  display: none !important;
 }
 
-/* === New: combined-grid support (compatible with your existing styles) ===
-   This block implements fixed-width pill cells (var(--pill-width)) and styles
-   for pills inside .combined-grid without overriding your .file-grid-pill animations.
-   It is intentionally minimal and safe.
-*/
-.combined-grid{
-  display: grid;
-  gap: 12px;
-  /* fixed cell width: each cell min/max = --pill-width */
-  grid-template-columns: repeat(auto-fill, minmax(var(--pill-width), var(--pill-width)));
-  width: 100%;
-  align-items: center;
-  justify-content: start;
-  margin-top: 12px;
-  box-sizing: border-box;
-}
-
-/* make each pill fit the cell and inherit your btn-file look */
-.combined-grid > a,
-.combined-grid > .btn-file {
-  display: block;
-  width: calc(var(--pill-width) - 8px);
-  padding: 8px 6px;
-  box-sizing: border-box;
-  text-align: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  color: #fff;
-  font-weight: 700;
-  font-size: 12px;
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 10px 28px rgba(99,102,241,0.12);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
-}
-
-/* hover for combined grid pills */
-.combined-grid > a:hover,
-.combined-grid > .btn-file:hover {
-  transform: translateY(-4px);
-  filter: brightness(1.03);
-  box-shadow: 0 20px 50px rgba(99,102,241,0.18);
-}
-
-/* ensure compatibility if subject-links or other scripts generate file-grid items */
-.file-grid, .file-grid-item {
-  box-sizing: border-box;
-}
-
-/* small screens: increase pill width for readability */
-@media(max-width:720px){
-  :root{ --pill-width: 120px; }
-  .combined-grid { grid-template-columns: repeat(auto-fill, minmax(var(--pill-width), 1fr)); }
-  .combined-grid > a { font-size:13px; width: calc(var(--pill-width) - 8px); }
-  .file-grid-pill .btn-file{padding:10px 16px;font-size:14px}
-}
-
-/* Focus states với gradient outline */
-.btn-file:focus, .subject-list li a:focus, .logo:focus, input:focus, button:focus {
+/* focus state for accessibility */
+.btn-file:focus, 
+.subject-list li a:focus, 
+.logo:focus, 
+input:focus, 
+button:focus {
   outline: 3px solid rgba(99,102,241,0.3);
-  outline-offset: 4px;
+  outline-offset: 3px;
   box-shadow: 0 0 0 6px rgba(236,72,153,0.1);
 }
 
-/* Subject inline detail */
-.subject-inline-detail{
-  padding:20px;
-  border-radius:var(--small-radius);
+/* subject-inline-detail - CHO subject-links.js */
+.subject-inline-detail,
+.subject-detail-inline{
+  padding:14px;
+  border-radius:10px;
   border:1px solid var(--border);
   background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
   box-shadow:0 15px 50px rgba(99,102,241,0.1);
   animation: fadeIn 0.4s ease;
+  margin-top: 12px;
 }
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Buttons với ripple effect */
-.btn-ghost{
+/* static-links và drive-links containers - GIỮ NGUYÊN flex */
+.static-links{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.drive-links{
+  margin: 10px 0;
+}
+
+/* Buttons */
+.btn, button.btn{
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all var(--transition-fast) ease;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+}
+.btn:hover, button.btn:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(99,102,241,0.4);
+}
+.btn::after{
+  display: none !important;
+}
+
+.btn-ghost, button.btn-ghost{
   background:transparent;
   border:2px solid rgba(99,102,241,0.2);
-  padding:10px 16px;
-  border-radius:var(--small-radius);
+  padding:8px 12px;
+  border-radius:10px;
   cursor:pointer;
   transition: all var(--transition-med) ease;
   font-weight: 600;
+  color: var(--text);
   position: relative;
   overflow: hidden;
 }
@@ -587,28 +664,32 @@ a:hover::after {
   border-radius: 50%;
   background: rgba(99,102,241,0.1);
   transform: translate(-50%, -50%);
-  transition: all var(--transition-slow) ease;
+  transition: all 500ms ease;
+  pointer-events: none; /* QUAN TRỌNG */
 }
 .btn-ghost:hover::before {
   width: 300px;
   height: 300px;
 }
-.btn-ghost:hover{ 
+.btn-ghost:hover, button.btn-ghost:hover{ 
   background: rgba(99,102,241,0.05);
   border-color: var(--primary);
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(99,102,241,0.15);
 }
+.btn-ghost::after{
+  display: none !important;
+}
 
-/* Helpers */
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.flex-space{display:flex;justify-content:space-between;align-items:center;gap:10px}
+/* small helpers */
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.flex-space{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .note{font-size:13px;color:var(--muted);font-weight: 500;}
 .hidden{display:none!important}
 
 /* Footer */
 .site-footer{
-  padding:24px 0;
+  padding:20px 0;
   background:transparent;
   color:var(--muted);
   font-size:13px;
@@ -616,25 +697,67 @@ a:hover::after {
   font-weight: 500;
 }
 
-/* Responsive */
+/* responsive */
 @media(max-width:1100px){
-  .cards-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-  .header-search{max-width:500px}
+  .cards-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .header-search{max-width:460px}
 }
 @media(max-width:720px){
-  .grade-panel{min-height:140px;padding:18px}
-  .subject-list li{font-size:14px;padding:12px;height:52px}
+  .grade-panel{min-height:120px;padding:14px}
+  .subject-list li{font-size:14px;padding:12px;height:44px}
   .header-search{display:none}
-  .logo{font-size:20px}
+  
+  /* Logo mobile */
+  .logo{font-size:24px;}
+  .site-sub{font-size:13px;}
+  
+  /* Header inner mobile - stack vertically nếu cần */
+  .header-inner{
+    gap: 12px;
+  }
+  
+  /* Auth area mobile */
+  #auth-area{
+    gap: 8px;
+  }
+  
+  .nav-link{
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  /* Mobile: CHỈ buttons trong .file-grid - responsive 2 cột */
+  .file-grid{
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .file-grid .btn-file{
+    width: 100%;
+    height: 40px;
+    font-size: 12px;
+  }
+  
+  /* Các btn-file khác giữ nguyên */
+  .file-grid-pill .btn-file{
+    padding:6px 12px;
+    font-size:13px;
+  }
 }
 
-/* Reduced motion */
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce){
-  *, *::before, *::after { 
+  *{ 
     transition-duration: 0ms !important; 
     animation-duration: 0ms !important; 
     animation-delay: 0ms !important;
   }
-  .file-grid-pill, .subject-list li{ opacity:1; transform:none; animation:none; }
-  body::before { animation: none; }
+  .file-grid-pill, 
+  .file-grid,
+  .subject-list li{ 
+    opacity:1; 
+    transform:none; 
+    animation:none; 
+  }
+  body::before { 
+    animation: none; 
+  }
 }
