@@ -44,8 +44,17 @@ document.addEventListener('DOMContentLoaded', function () {
       try { json = text ? JSON.parse(text) : null; } catch(e) { json = null; }
 
       if (res.ok && json && json.ok) {
-        // login ok -> reload or redirect
-        window.location.href = '/';
+        // Nếu là admin thì redirect tới /admin, ngược lại về homepage
+        try {
+          if (json.user && json.user.role === 'admin') {
+            window.location.href = '/admin';
+          } else {
+            window.location.href = '/';
+          }
+        } catch (e) {
+          // fallback
+          window.location.href = '/';
+        }
       } else {
         const errMsg = (json && json.error) ? json.error : (text || ('HTTP ' + res.status));
         alert('Đăng nhập thất bại: ' + errMsg);

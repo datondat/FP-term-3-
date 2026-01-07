@@ -1,5 +1,6 @@
 /* public/main.js
    Thay thế hoàn chỉnh: thêm autocomplete dropdown + xử lý lỗi tốt hơn.
+   Sửa: đảm bảo gửi credentials khi cần và redirect admin khi login.
 */
 document.addEventListener('DOMContentLoaded', () => {
   // mapping lớp -> môn
@@ -117,7 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     resultsContainer.innerHTML = '<p class="loading">Đang tìm kiếm…</p>';
     try {
-      const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&page=' + page + '&limit=10');
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&page=' + page + '&limit=10', {
+        credentials: 'same-origin'
+      });
       if (!res.ok) {
         // show friendly message in results area
         const text = await safeText(res);
@@ -222,13 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!q) return [];
     try {
       // Prefer /api/suggest
-      let res = await fetch('/api/suggest?q=' + encodeURIComponent(q));
+      let res = await fetch('/api/suggest?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
       if (res.ok) {
         const d = await res.json();
         return d.suggestions || [];
       }
       // fallback: use /api/search with small limit
-      res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=6');
+      res = await fetch('/api/search?q=' + encodeURIComponent(q) + '&limit=6', { credentials: 'same-origin' });
       if (!res.ok) return [];
       const sd = await res.json();
       return (sd.results || []).map(r => r.item || r);
@@ -386,16 +389,24 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
+        credentials: 'include', // ensure cookie is included
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const json = await res.json();
-      if (json.ok) {
+      const json = await res.json().catch(()=>null);
+      if (res.ok && json && json.ok) {
+        // If admin -> redirect to admin dashboard
+        try {
+          if (json.user && json.user.role === 'admin') {
+            window.location.href = '/admin';
+            return;
+          }
+        } catch (e) { /* ignore */ }
         inlineLogin.classList.add('hidden');
         inlineLogin.setAttribute('aria-hidden', 'true');
-        loadUser();
+        await loadUser();
       } else {
-        alert('Lỗi đăng nhập: ' + (json.message || 'Thông tin không đúng'));
+        alert('Lỗi đăng nhập: ' + ((json && json.error) || (json && json.message) || 'Thông tin không đúng'));
       }
     } catch (err) {
       alert('Lỗi mạng, thử lại');
@@ -418,9 +429,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load current user state
   async function loadUser() {
     try {
-      const r = await fetch('/api/me');
-      const j = await r.json();
-      const logged = j.user;
+      const r = await fetch('/api/me', { credentials: 'include' });
+      const j = await r.json().catch(()=>null);
+      const logged = j && j.user;
       const userNot = document.getElementById('userNotLogged');
       const userLogged = document.getElementById('userLogged');
       const userNameDisplay = document.getElementById('userNameDisplay');

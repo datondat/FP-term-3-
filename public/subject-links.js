@@ -559,7 +559,7 @@
   window.FP.apiBase = API_BASE;
 
 
-})(); 
+})();
 /* --- START: Inline advanced search (only "Lọc") --- */
 (function(){
   // If header not present, skip
@@ -591,7 +591,7 @@
   wrapper.id = 'fp-advanced-search';
   wrapper.innerHTML = `
     <input id="fp-global-q" type="search" placeholder="Tìm (nhấn Enter)" aria-label="Tìm" style="min-width:200px" />
-    <select id="fp-grade"><option value="">Khối</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+    <select id="fp-grade"><option value="">Khối</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</op[...]
     <select id="fp-subject"><option value="">Môn</option></select>
     <button id="fp-filter-btn" class="fp-btn">Lọc</button>
   `;
@@ -616,7 +616,7 @@
   }
 
   // Helpers & wiring
-  const existingGlobal = document.getElementById('global-search') || document.querySelector('input[placeholder*="Tìm"]') || document.querySelector('input[type="search"].global-search') || document.querySelector('input[type="search"]');
+  const existingGlobal = document.getElementById('global-search') || document.querySelector('input[placeholder*="Tìm"]') || document.querySelector('input[type="search"].global-search') || null;
   const localInput = document.getElementById('fp-global-q');
   if (existingGlobal && localInput) localInput.remove(); // reuse page's global input
 
@@ -638,8 +638,8 @@
         const o = document.createElement('option'); o.value = k; o.textContent = k; subjectSel.appendChild(o);
       });
     } else {
-      const fallback = {6:['Toán','Ngữ văn','Tiếng Anh'],7:['Toán','Ngữ văn','Tiếng Anh'],8:['Toán','Ngữ văn','Tiếng Anh'],9:['Toán','Ngữ văn','Tiếng Anh'],10:['Toán','Ngữ văn'],11:['Toán','Ngữ văn'],12:['Toán','Ngữ văn']};
-      (fallback[g]||[]).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; subjectSel.appendChild(o); });
+      const fallback = {6:['Toán','Ngữ văn','Tiếng Anh'],7:['Toán','Ngữ văn','Tiếng Anh'],8:['Toán','Ngữ văn','Tiếng Anh'],9:['Toán','Ngữ văn','Tiếng Anh'],10:['Toán','Ngữ văn','Tiếng Anh'],11:['Toán','Ngữ văn','Tiếng Anh'],12:['Toán','Ngữ văn','Tiếng Anh']};
+        (fallback[g]||[]).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; subjectSel.appendChild(o); });
     }
   }
 
@@ -863,6 +863,13 @@
         const r = await callJson('/api/login', { method: 'POST', body: payload });
         if (btn) btn.disabled = false;
         if (r.ok && r.json && r.json.ok) {
+          // Nếu là admin => chuyển sang trang admin
+          try {
+            if (r.json.user && r.json.user.role === 'admin') {
+              window.location.href = '/admin';
+              return;
+            }
+          } catch(e){ /* ignore */ }
           showLoggedIn(r.json.user);
           document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
           if (typeof closeLoginModal === 'function') try { closeLoginModal(); } catch(e){}
