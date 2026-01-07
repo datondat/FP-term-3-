@@ -2,6 +2,12 @@
 /**
  * server.js
  * Entry point (full file).
+ *
+ * Changes made:
+ * - Ensure API routers are mounted before serving static files to avoid returning HTML for API requests
+ *   when a router fails to mount.
+ * - Try mounting admin router from ./src/routes/admin first, then fallback to ./server/admin if present.
+ * - Improve error logging when a router fails to mount (print stack).
  */
 
 const express = require('express');
@@ -81,64 +87,148 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve public files (static) and uploads
-const PUBLIC_DIR = path.join(__dirname, 'public');
-if (fs.existsSync(PUBLIC_DIR)) {
-  app.use(express.static(PUBLIC_DIR));
-  app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads')));
-} else {
-  console.warn('Warning: public directory not found:', PUBLIC_DIR);
-}
+/**
+ * Session placeholder (if you use sessions)
+ * Note: if you already configure sessions elsewhere, remove this or adapt.
+ */
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-session-secret';
+app.use(session({
+  name: process.env.SESSION_NAME || 'sid',
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: (process.env.NODE_ENV === 'production'),
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
 
-// Mount auth router EARLY under /api so endpoints /api/login etc work
+/**
+ * Mount routers BEFORE static serving to prevent returning index.html for broken API paths.
+ * We will attempt to mount the commonly used routers and log mount status.
+ */
 const mounted = [];
+
+/* ---- auth router (mounted under /api and /api/auth) ---- */
 try {
   const authRouter = require('./src/routes/auth');
   app.use('/api', authRouter);
   app.use('/api/auth', authRouter);
   mounted.push('/api (auth), /api/auth (auth)');
+  console.log('Mounted auth router at /api and /api/auth');
 } catch (e) {
   console.error('auth router not mounted (full error):', e && e.stack ? e.stack : e);
 }
 
-// Other routers (comments, search, uploads, classSubjects, admin)...
+/* ---- comments router ---- */
 try {
   const commentsRouter = require('./src/routes/comments');
   app.use('/api/comments', commentsRouter);
   mounted.push('/api/comments');
-} catch (e) { console.warn('comments router not mounted:', e && e.message ? e.message : e); }
+  console.log('Mounted comments router at /api/comments');
+} catch (e) {
+  console.warn('comments router not mounted:', e && e.stack ? e.stack : e);
+}
+
+/* ---- search router (mounted under /api) ---- */
 try {
   const searchRouter = require('./src/routes/search');
   app.use('/api', searchRouter);
   mounted.push('/api (search)');
-} catch (e) { console.warn('search router not mounted:', e && e.message ? e.message : e); }
+  console.log('Mounted search router at /api');
+} catch (e) {
+  console.warn('search router not mounted:', e && e.stack ? e.stack : e);
+}
+
+/* ---- uploads router ---- */
 try {
   const uploadsRouter = require('./src/routes/uploads');
   app.use('/api/uploads', uploadsRouter);
   mounted.push('/api/uploads');
-} catch (e) { console.warn('uploads router not mounted:', e && e.message ? e.message : e); }
+  console.log('Mounted uploads router at /api/uploads');
+} catch (e) {
+  console.warn('uploads router not mounted:', e && e.stack ? e.stack : e);
+}
+
+/* ---- classSubjects router ---- */
 try {
   const classSubjectsRouter = require('./src/routes/classSubjects');
   app.use('/api/classes', classSubjectsRouter);
   mounted.push('/api/classes');
-} catch (e) { console.warn('classSubjects router not mounted:', e && e.message ? e.message : e); }
-try {
-  const adminRouter = require('./src/routes/admin');
-  app.use('/api/admin', adminRouter);
-  mounted.push('/api/admin');
-} catch (e) { console.warn('admin router not mounted:', e && e.message ? e.message : e); }
+  console.log('Mounted classSubjects router at /api/classes');
+} catch (e) {
+  console.warn('classSubjects router not mounted:', e && e.stack ? e.stack : e);
+}
+
+/* ---- admin router: try common locations and log stack trace on error ---- */
+(() => {
+  const tryPaths = [
+    './src/routes/admin',  // existing app path
+    './server/admin',      // single-file admin module (if you placed it here)
+    './server/modules/admin/routes', // other suggested path
+    './server/modules/admin', // possible index export
+  ];
+  let mountedAdmin = false;
+  for (const p of tryPaths) {
+    try {
+      if (fs.existsSync(path.join(__dirname, p + '.js')) || fs.existsSync(path.join(__dirname, p))) {
+        const adminRouter = require(p);
+        app.use('/api/admin', adminRouter);
+        mounted.push('/api/admin');
+        console.log(`Mounted admin router from "${p}" at /api/admin`);
+        mountedAdmin = true;
+        break;
+      }
+    } catch (e) {
+      console.error(`Failed to require admin router at "${p}":`, e && e.stack ? e.stack : e);
+      // continue trying next path
+    }
+  }
+  if (!mountedAdmin) {
+    console.warn('admin router not mounted: none of the tried paths exist or loaded successfully:', tryPaths.join(', '));
+  }
+})();
 
 console.log('Mounted routers:', mounted.length ? mounted.join(', ') : '(none)');
 
-// health endpoints...
+/**
+ * Static public files (serve AFTER API routers are mounted)
+ * This avoids accidentally serving index.html for API requests when a router is missing.
+ */
+const PUBLIC_DIR = path.join(__dirname, 'public');
+if (fs.existsSync(PUBLIC_DIR)) {
+  app.use(express.static(PUBLIC_DIR));
+  // Keep /uploads static if you store fallback uploads in public/uploads
+  const uploadsStatic = path.join(PUBLIC_DIR, 'uploads');
+  if (fs.existsSync(uploadsStatic)) {
+    app.use('/uploads', express.static(uploadsStatic));
+  }
+  console.log('Serving static from', PUBLIC_DIR);
+} else {
+  console.warn('Warning: public directory not found:', PUBLIC_DIR);
+}
+
+/* -------------------------
+   Health and info endpoints
+   ------------------------- */
 app.get('/api/ping', (req, res) => {
   res.json({ ok: true, now: new Date().toISOString(), pid: process.pid, mounted });
 });
 app.get('/api/info', (req, res) => {
-  res.json({ ok: true, env: { node_env: process.env.NODE_ENV || 'development', database_url_set: !!process.env.DATABASE_URL, port: process.env.PORT || null }, mounted });
+  res.json({
+    ok: true,
+    env: {
+      node_env: process.env.NODE_ENV || 'development',
+      database_url_set: !!process.env.DATABASE_URL,
+      port: process.env.PORT || null
+    },
+    mounted
+  });
 });
 
-// API 404 handler for /api/*
+/* API 404 handler for /api/* — keep before SPA fallback */
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: `No ${req.method} ${req.originalUrl}` });
@@ -146,7 +236,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// SPA fallback...
+/* SPA fallback — returns index.html for non-API routes */
 app.get('*', (req, res) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: 'Not Found' });
@@ -156,18 +246,20 @@ app.get('*', (req, res) => {
   return res.status(404).send('Not Found');
 });
 
-// Error handler
+/* Error handler */
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
   if (res.headersSent) return next(err);
   res.status(err.status || 500).json({ ok: false, error: err.message || 'Internal Server Error' });
 });
 
+/* Start server */
 const port = parseInt(process.env.PORT, 10) || 5001;
 const server = app.listen(port, () => {
   console.log(`Server listening on port ${port} (pid=${process.pid})`);
 });
 
+/* Graceful shutdown */
 function shutdown(signal) {
   console.log(`Received ${signal}, closing server...`);
   server.close(async () => {

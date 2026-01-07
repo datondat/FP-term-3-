@@ -16,8 +16,10 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "express-session": "^1.18.2",
+    "fs-extra": "^11.3.3",
     "googleapis": "^169.0.0",
     "jsonwebtoken": "^9.0.0",
+    "multer": "^2.0.2",
     "pg": "^8.16.3",
     "raw-body": "^3.0.2"
   },

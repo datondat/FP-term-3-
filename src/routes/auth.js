@@ -1,10 +1,10 @@
 /**
- * src/routes/auth.js (cookie-session friendly)
- * - No DB schema changes required for session storage.
- * - Sets req.session.userId and clears req.session = null on logout.
- * - POST /api/logout always returns JSON { ok: true } for API clients.
+ * src/routes/auth.js
+ * - cookie-session friendly (no req.session.save/destroy)
+ * - POST /api/login returns JSON { ok:true, user:{...} } for AJAX clients
+ * - Non-AJAX form submit redirects to /admin when role==='admin'
+ * - POST /api/logout always returns JSON { ok:true }
  */
-
 const express = require('express');
 const router = express.Router();
 
@@ -35,12 +35,13 @@ function safeUserRow(row) {
   return {
     id: row.id,
     username: row.username,
-    role: row.role || 'user'
+    role: row.role || 'user',
+    displayName: row.display_name || row.displayName || null
   };
 }
 
 async function findUserByIdentifier(identifier) {
-  const sql = 'SELECT id, username, password_hash, role FROM users WHERE username = $1 LIMIT 1';
+  const sql = 'SELECT id, username, password_hash, role, display_name FROM users WHERE username = $1 LIMIT 1';
   const r = await pool.query(sql, [identifier]);
   return r.rows[0] || null;
 }
@@ -82,11 +83,10 @@ router.post('/register', async (req, res) => {
     }
 
     const user = await createUser({ username, password });
-    // cookie-session: just assign req.session directly
     if (req.session) req.session.userId = user.id;
 
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
-    // If not JSON, redirect: admins -> /admin, others -> homepage
+    // Non-AJAX: redirect admin -> /admin, others -> /
     const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
     return res.redirect(redirectTo);
   } catch (err) {
@@ -117,13 +117,13 @@ router.post('/login', async (req, res) => {
       return res.redirect('/login?error=invalid_credentials');
     }
 
-    // cookie-session: set session directly
+    // Set session (cookie-session)
     if (req.session) req.session.userId = user.id;
 
-    // If client expects JSON (AJAX), return JSON including role
+    // For AJAX clients return JSON including role
     if (wantsJson(req)) return res.json({ ok: true, user: safeUserRow(user) });
 
-    // Non-AJAX login (form submit): redirect admins to /admin, others to homepage or next param
+    // Non-AJAX: redirect admin to /admin, others to next or home
     const redirectToQuery = req.query.next || req.body.next;
     if (redirectToQuery) return res.redirect(redirectToQuery);
     const redirectTo = (user && user.role === 'admin') ? '/admin' : '/';
@@ -135,26 +135,22 @@ router.post('/login', async (req, res) => {
   }
 });
 
-/** POST /api/logout — force JSON response so AJAX callers always receive JSON */
+/** POST /api/logout — always return JSON */
 router.post('/logout', (req, res) => {
   try {
     console.log('logout called — cookie-session present?', !!req.session, 'session.userId=', req.session && req.session.userId);
-
-    // Clear session for cookie-session
-    try { if (req.session) req.session = null; } catch (e) { console.error('error clearing session', e); }
-
-    // Always respond JSON for API clients so AJAX callers don't get HTML/redirect
-    res.type('application/json').status(200).json({ ok: true });
+    try { if (req.session) req.session = null; } catch (e) { console.error('error clearing cookie-session', e); }
+    return res.json({ ok: true });
   } catch (err) {
     console.error('logout error', err);
-    try { res.type('application/json').status(200).json({ ok: true, warning: 'logout_exception' }); } catch(e) { /* ignore */ }
+    try { return res.json({ ok: true, warning: 'logout_exception' }); } catch(e) { return res.status(200).send('ok'); }
   }
 });
 
 router.get('/me', async (req, res) => {
   try {
     if (!req.session || !req.session.userId) return res.json({ ok: false });
-    const r = await pool.query('SELECT id, username, role FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
+    const r = await pool.query('SELECT id, username, role, display_name FROM users WHERE id = $1 LIMIT 1', [req.session.userId]);
     if (!r.rows[0]) return res.json({ ok: false });
     return res.json({ ok: true, user: safeUserRow(r.rows[0]) });
   } catch (err) {

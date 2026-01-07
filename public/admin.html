@@ -4,49 +4,98 @@
   <meta charset="utf-8" />
   <title>Admin — FP</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="main.css">
   <style>
-    .container { max-width:1000px; margin:20px auto; padding:12px; }
-    .panel { background:#fff; border:1px solid #eee; padding:12px; border-radius:8px; margin-bottom:12px; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:8px; border-bottom:1px solid #f0f0f0; text-align:left; }
-    .btn { padding:6px 10px; border-radius:6px; cursor:pointer; background:#f3f3f3; border:1px solid #ddd; }
-    .btn-danger { background:#fdd; border-color:#f99; }
-    .muted { color:#666; }
+    :root{--bg:#f7f7f9;--card:#fff;--muted:#6b6f76;--accent:#0b79d0;--danger:#d04646}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
+    header{height:56px;background:#fff;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;padding:0 18px;gap:12px}
+    header .logo{font-weight:700;color:var(--accent);text-decoration:none}
+    .container{max-width:1200px;margin:18px auto;padding:0 16px}
+    .layout{display:flex;gap:18px}
+    .sidebar{width:260px;background:var(--card);border-radius:10px;padding:12px 8px;box-shadow:0 6px 20px rgba(0,0,0,.04)}
+    .sidebar h3{margin:6px 12px;color:#222;font-size:15px}
+    .nav-item{display:block;padding:10px 12px;margin:6px;border-radius:8px;color:#222;text-decoration:none;cursor:pointer}
+    .nav-item.active{background:linear-gradient(90deg,rgba(11,121,208,.06),rgba(11,121,208,.03));border:1px solid rgba(11,121,208,.08);font-weight:700}
+    .main{flex:1;min-height:520px;display:flex;flex-direction:column;gap:12px}
+    .panel{background:var(--card);border-radius:10px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.04);display:none}
+    .panel.active{display:block}
+    .panel h2{margin:0 0 12px 0;font-size:18px}
+    .muted{color:var(--muted);font-size:13px}
+    /* upload form */
+    .upload-area{border:1px dashed rgba(0,0,0,.08);padding:12px;border-radius:8px;background:linear-gradient(180deg,#fff,#fbfdff)}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;border:none;cursor:pointer}
+    .btn.ghost{background:#fff;color:var(--accent);border:1px solid rgba(11,121,208,.14)}
+    .list{margin-top:12px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    table th, table td{padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.04);text-align:left}
+    .actions button{margin-right:6px}
+    .danger{background:var(--danger);border:none;color:#fff;padding:6px 8px;border-radius:6px;cursor:pointer}
+    .note{font-size:13px;color:var(--muted)}
+    /* responsive */
+    @media (max-width:900px){
+      .layout{flex-direction:column}
+      .sidebar{width:100%;display:flex;overflow:auto}
+      .sidebar .nav-item{flex:1;white-space:nowrap}
+    }
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="branding"><a href="/" class="logo">FP</a></div>
-      <nav class="site-nav" id="nav">
-        <a href="/" class="nav-link">Trang chủ</a>
-        <a href="#" id="link-logout" class="nav-link" style="display:none">Đăng xuất</a>
-      </nav>
-    </div>
+  <header>
+    <a class="logo" href="/">FP Admin</a>
+    <div style="flex:1"></div>
+    <nav>
+      <a id="link-logout" href="#" style="color:#c44;text-decoration:none">Đăng xuất</a>
+    </nav>
   </header>
 
-  <main class="container">
-    <h1>Admin panel</h1>
+  <div class="container">
+    <div class="layout">
+      <aside class="sidebar" role="navigation" aria-label="Admin menu">
+        <h3>Quản trị</h3>
+        <a class="nav-item active" data-panel="uploads">Tải file lên</a>
+        <a class="nav-item" data-panel="comments">Quản lý bình luận</a>
+        <a class="nav-item" data-panel="users">Quản lý người dùng</a>
+        <div style="height:8px"></div>
+        <div class="note" style="padding:0 12px">Chọn mục ở bên trái. Mỗi m���c sẽ hiển thị nội dung ở khung bên phải.</div>
+      </aside>
 
-    <section class="panel" id="upload-panel">
-      <h3>Tải file lên</h3>
-      <form id="admin-upload-form" enctype="multipart/form-data">
-        <input type="file" name="file" id="admin-file" required />
-        <button type="submit" class="btn">Upload</button>
-      </form>
-      <div id="upload-result" style="margin-top:8px;color:#333"></div>
-      <h4 style="margin-top:12px">Danh sách file đã upload</h4>
-      <div id="uploads-list"></div>
-    </section>
+      <main class="main" role="main">
+        <!-- Uploads panel -->
+        <section id="panel-uploads" class="panel active" aria-live="polite">
+          <h2>Tải file lên</h2>
+          <div class="upload-area">
+            <form id="uploadForm">
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="uploadInput" type="file" name="file" />
+                <button class="btn" type="submit">Upload</button>
+                <button id="refreshUploads" class="btn ghost" type="button">Làm mới danh sách</button>
+              </div>
+              <div class="note" style="margin-top:8px">Ghi chú: file sẽ được gửi tới endpoint POST /api/admin/uploads (credentials included).</div>
+            </form>
+          </div>
 
-    <section class="panel" id="comments-panel">
-      <h3>Quản lý bình luận</h3>
-      <div id="comments-list"></div>
-    </section>
-  </main>
+          <div class="list">
+            <h3 class="muted">Danh sách file đã upload</h3>
+            <div id="uploadsList" class="muted">Đang tải...</div>
+          </div>
+        </section>
 
-  <script src="subject-links.js"></script>
+        <!-- Comments panel -->
+        <section id="panel-comments" class="panel" aria-live="polite">
+          <h2>Quản lý bình luận</h2>
+          <div class="note">Xem, duyệt hoặc xoá bình luận.</div>
+          <div class="list" id="commentsList">Đang tải...</div>
+        </section>
+
+        <!-- Users panel -->
+        <section id="panel-users" class="panel" aria-live="polite">
+          <h2>Quản lý người dùng</h2>
+          <div class="note">Thay đổi quyền, khoá/mở khóa hoặc xoá người dùng.</div>
+          <div class="list" id="usersList">Đang tải...</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
   <script src="admin.js"></script>
 </body>
 </html>

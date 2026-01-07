@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', function () {
       try { json = text ? JSON.parse(text) : null; } catch(e) { json = null; }
 
       if (res.ok && json && json.ok) {
-        // Nếu là admin thì redirect tới /admin, ngược lại về homepage
+        // Nếu là admin thì redirect tới admin.html, ngược lại về homepage
         try {
           if (json.user && json.user.role === 'admin') {
-            window.location.href = '/admin';
+            window.location.href = '/admin.html';
           } else {
             window.location.href = '/';
           }
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
           window.location.href = '/';
         }
       } else {
-        const errMsg = (json && json.error) ? json.error : (text || ('HTTP ' + res.status));
+        const errMsg = (json && (json.error || json.message)) ? (json.error || json.message) : (text || ('HTTP ' + res.status));
         alert('Đăng nhập thất bại: ' + errMsg);
       }
     } catch (err) {
@@ -100,10 +100,8 @@ document.addEventListener('DOMContentLoaded', function () {
   <footer class="site-footer">
     <div class="container"><small>© FP</small></div>
   </footer>
-<!-- Add this in <head> BEFORE subject-links.js (or any client script that calls apiUrl) -->
 <script>
-  // Nếu frontend và API cùng origin (chạy node server trên same host/port), để ''.
-  // Nếu frontend trên port khác khi dev (ví dụ live-server port 5500), set thành http://localhost:5001
+  // Dev default: nếu frontend tách origin, set API_BASE phù hợp
   window.API_BASE = window.API_BASE || 'http://localhost:5001';
 </script>
   <script src="subject-links.js"></script>

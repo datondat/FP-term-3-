@@ -1,6 +1,6 @@
 /* public/main.js
    Thay thế hoàn chỉnh: thêm autocomplete dropdown + xử lý lỗi tốt hơn.
-   Sửa: đảm bảo gửi credentials khi cần và redirect admin khi login.
+   Sửa: đảm bảo gửi credentials khi cần và redirect admin khi login (sang admin.html).
 */
 document.addEventListener('DOMContentLoaded', () => {
   // mapping lớp -> môn
@@ -395,10 +395,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const json = await res.json().catch(()=>null);
       if (res.ok && json && json.ok) {
-        // If admin -> redirect to admin dashboard
+        // If admin -> redirect to admin.html
         try {
           if (json.user && json.user.role === 'admin') {
-            window.location.href = '/admin';
+            window.location.href = '/admin.html';
             return;
           }
         } catch (e) { /* ignore */ }
@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inlineLogin.setAttribute('aria-hidden', 'true');
         await loadUser();
       } else {
-        alert('Lỗi đăng nhập: ' + ((json && json.error) || (json && json.message) || 'Thông tin không đúng'));
+        alert('Lỗi đăng nhập: ' + (json && (json.error || json.message) || 'Thông tin không đúng'));
       }
     } catch (err) {
       alert('Lỗi mạng, thử lại');

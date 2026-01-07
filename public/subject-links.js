@@ -442,8 +442,7 @@
     } catch (e) {
       console.warn('Search endpoint failed; falling back to folder flow:', e);
     }
-
-    // 2) Fallback: folder flow (grade folder -> subject folder -> files)
+        // 2) Fallback: folder flow (grade folder -> subject folder -> files)
     try {
       driveWrap.innerHTML = '<div class="muted">Tìm folder khối lớp trên Drive...</div>';
       let gradeFolderId;
@@ -591,7 +590,7 @@
   wrapper.id = 'fp-advanced-search';
   wrapper.innerHTML = `
     <input id="fp-global-q" type="search" placeholder="Tìm (nhấn Enter)" aria-label="Tìm" style="min-width:200px" />
-    <select id="fp-grade"><option value="">Khối</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</op[...]
+    <select id="fp-grade"><option value="">Khối</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
     <select id="fp-subject"><option value="">Môn</option></select>
     <button id="fp-filter-btn" class="fp-btn">Lọc</button>
   `;
@@ -639,7 +638,7 @@
       });
     } else {
       const fallback = {6:['Toán','Ngữ văn','Tiếng Anh'],7:['Toán','Ngữ văn','Tiếng Anh'],8:['Toán','Ngữ văn','Tiếng Anh'],9:['Toán','Ngữ văn','Tiếng Anh'],10:['Toán','Ngữ văn','Tiếng Anh'],11:['Toán','Ngữ văn','Tiếng Anh'],12:['Toán','Ngữ văn','Tiếng Anh']};
-        (fallback[g]||[]).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; subjectSel.appendChild(o); });
+      (fallback[g]||[]).forEach(k => { const o=document.createElement('option'); o.value=k; o.textContent=k; subjectSel.appendChild(o); });
     }
   }
 
@@ -863,10 +862,10 @@
         const r = await callJson('/api/login', { method: 'POST', body: payload });
         if (btn) btn.disabled = false;
         if (r.ok && r.json && r.json.ok) {
-          // Nếu là admin => chuyển sang trang admin
+          // Nếu là admin => chuyển sang trang admin.html
           try {
             if (r.json.user && r.json.user.role === 'admin') {
-              window.location.href = '/admin';
+              window.location.href = '/admin.html';
               return;
             }
           } catch(e){ /* ignore */ }
@@ -874,7 +873,7 @@
           document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
           if (typeof closeLoginModal === 'function') try { closeLoginModal(); } catch(e){}
         } else {
-          const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng nhập thất bại');
+          const msg = (r.json && (r.json.error || r.json.message)) ? (r.json.error || r.json.message) : (r.text||'Đăng nhập thất bại');
           alert('Đăng nhập thất bại: ' + msg);
         }
       }));
@@ -894,7 +893,7 @@
           document.dispatchEvent(new CustomEvent('user:loggedin',{detail:r.json.user}));
           if (typeof closeRegisterModal === 'function') try { closeRegisterModal(); } catch(e){}
         } else {
-          const msg = (r.json && r.json.error) ? r.json.error : (r.text||'Đăng ký thất bại');
+          const msg = (r.json && (r.json.error || r.json.message)) ? (r.json.error || r.json.message) : (r.text||'Đăng ký thất bại');
           alert('Đăng ký thất bại: ' + msg);
         }
       }));
@@ -911,7 +910,8 @@
         showLoggedOut();
         document.dispatchEvent(new CustomEvent('user:loggedout'));
       } else {
-        alert('Đăng xuất thất bại');
+        const err = (r.json && (r.json.error || r.json.message)) || r.text || 'Đăng xuất thất bại';
+        alert('Đăng xuất thất bại: ' + err);
       }
     }));
 
@@ -1008,7 +1008,8 @@
         showLoggedOut();
         document.dispatchEvent(new CustomEvent('user:loggedout'));
       } else {
-        alert('Đăng xuất thất bại');
+        const err = (r.json && (r.json.error || r.json.message)) || r.text || 'Đăng xuất thất bại';
+        alert('Đăng xuất thất bại: ' + err);
       }
     }, true);
 
