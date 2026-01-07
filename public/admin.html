@@ -36,6 +36,8 @@
       .sidebar{width:100%;display:flex;overflow:auto}
       .sidebar .nav-item{flex:1;white-space:nowrap}
     }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    select, input[type="file"] { padding:6px 8px; border-radius:6px; border:1px solid #ddd; background:#fff; }
   </style>
 </head>
 <body>
@@ -55,7 +57,7 @@
         <a class="nav-item" data-panel="comments">Quản lý bình luận</a>
         <a class="nav-item" data-panel="users">Quản lý người dùng</a>
         <div style="height:8px"></div>
-        <div class="note" style="padding:0 12px">Chọn mục ở bên trái. Mỗi m���c sẽ hiển thị nội dung ở khung bên phải.</div>
+        <div class="note" style="padding:0 12px">Chọn mục ở bên trái. Mỗi mục sẽ hiển thị nội dung ở khung bên phải.</div>
       </aside>
 
       <main class="main" role="main">
@@ -64,12 +66,25 @@
           <h2>Tải file lên</h2>
           <div class="upload-area">
             <form id="uploadForm">
-              <div style="display:flex;gap:8px;align-items:center">
+              <div class="row" style="margin-bottom:8px">
                 <input id="uploadInput" type="file" name="file" />
+                <select id="gradeSelect" name="grade" aria-label="Khối">
+                  <option value="">Khối</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+                <select id="subjectSelect" name="subject" aria-label="Môn">
+                  <option value="">Môn</option>
+                </select>
                 <button class="btn" type="submit">Upload</button>
                 <button id="refreshUploads" class="btn ghost" type="button">Làm mới danh sách</button>
               </div>
-              <div class="note" style="margin-top:8px">Ghi chú: file sẽ được gửi tới endpoint POST /api/admin/uploads (credentials included).</div>
+              <div class="note" style="margin-top:8px">Ghi chú: nếu Drive được cấu hình (GOOGLE creds + DRIVE_UPLOAD_FOLDER_ID), file sẽ được upload tới Drive trong thư mục Khối → Môn.</div>
             </form>
           </div>
 
@@ -82,7 +97,12 @@
         <!-- Comments panel -->
         <section id="panel-comments" class="panel" aria-live="polite">
           <h2>Quản lý bình luận</h2>
-          <div class="note">Xem, duyệt hoặc xoá bình luận.</div>
+          <div class="note">Xem, duyệt hoặc xoá bình luận. Chọn nhiều bình luận và ẩn/hiện cùng lúc.</div>
+          <div style="margin:8px 0">
+            <button id="approveSelected" class="btn ghost" type="button">Hiện (Duyệt) chọn</button>
+            <button id="hideSelected" class="btn ghost" type="button">Ẩn (Bỏ duyệt) chọn</button>
+            <button id="refreshComments" class="btn ghost" type="button">Làm mới</button>
+          </div>
           <div class="list" id="commentsList">Đang tải...</div>
         </section>
 
@@ -90,6 +110,9 @@
         <section id="panel-users" class="panel" aria-live="polite">
           <h2>Quản lý người dùng</h2>
           <div class="note">Thay đổi quyền, khoá/mở khóa hoặc xoá người dùng.</div>
+          <div style="margin:8px 0">
+            <button id="refreshUsers" class="btn ghost" type="button">Làm mới</button>
+          </div>
           <div class="list" id="usersList">Đang tải...</div>
         </section>
       </main>

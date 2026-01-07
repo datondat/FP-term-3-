@@ -1,248 +1,206 @@
 <!doctype html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Upload tài liệu — FP-term-3</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/upload.css" />
-  </head>
-  <body>
-    <!-- header giống index để đồng bộ -->
-    <header class="top-header">
-      <div class="header-left">
-        <img src="/images/bookshelf.jpg" alt="Bookshelf" class="bookshelf logo" />
+<head>
+  <meta charset="utf-8">
+  <title>Upload Assignment</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;max-width:900px;margin:20px auto;padding:16px}
+    .dropzone{border:2px dashed #ccc;padding:20px;text-align:center;cursor:pointer;border-radius:6px}
+    .dropzone.dragover{background:#f7f9fc;border-color:#007bff}
+    .file-list{margin-top:12px}
+    .file-row{display:flex;align-items:center;gap:12px;padding:8px;border-bottom:1px solid #eee}
+    .file-progress{width:160px;height:8px;background:#f1f1f1;border-radius:4px;overflow:hidden}
+    .file-progress > i{display:block;height:100%;background:#28a745;width:0%}
+    button{padding:8px 12px;border-radius:4px;border:1px solid #ccc;background:white;cursor:pointer}
+    .server-response{margin-top:12px;color:#333;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Upload tài liệu</h1>
+  </header>
+
+  <main>
+    <div>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop files or click to choose">
+        Kéo thả file vào đây hoặc nhấn để chọn file
       </div>
 
-      <nav class="menu-class" aria-label="Menu lớp">
-        <a href="#" data-class="Lớp 6">Lớp 6</a>
-        <a href="#" data-class="Lớp 7">Lớp 7</a>
-        <a href="#" data-class="Lớp 8">Lớp 8</a>
-        <a href="#" data-class="Lớp 9">Lớp 9</a>
-        <a href="#" data-class="Lớp 10">Lớp 10</a>
-        <a href="#" data-class="Lớp 11">Lớp 11</a>
-        <a href="#" data-class="Lớp 12">Lớp 12</a>
-        <a href="#" data-class="Giáo án - Đề thi">Giáo án - Đề thi</a>
-      </nav>
+      <input id="file-input" type="file" style="display:none" multiple />
 
-      <div class="header-right">
-        <form class="search-form" id="searchFormTop">
-          <input class="search-input" name="q" type="search" placeholder="Tìm kiếm..." aria-label="Tìm" />
-          <button class="search-btn" type="submit">🔍</button>
-        </form>
-      </div>
-    </header>
-
-    <main class="upload-main container">
-      <section class="upload-hero">
-        <h1>Upload tài liệu</h1>
-        <p class="lead">Kéo thả hoặc chọn tệp để gửi đến server. (CSV / JSON / XLSX / Ảnh ...)</p>
-      </section>
-
-      <div id="dropzone" class="dropzone" tabindex="0" aria-label="Kéo thả tệp vào đây">
-        <input id="fileInput" type="file" multiple />
-        <div class="drop-inner">
-          <strong>Kéo thả tệp ở đây</strong>
-          <div class="small">Hoặc nhấp để chọn file</div>
-        </div>
+      <div style="margin-top:12px">
+        <button id="upload-btn">Upload</button>
+        <button id="clear-btn" type="button">Clear</button>
       </div>
 
-      <div class="controls">
-        <button id="uploadBtn" class="btn" disabled>Upload tất cả</button>
-        <button id="clearBtn" class="btn btn-ghost" disabled>Xóa tất cả</button>
-      </div>
+      <div class="file-list" id="file-list"></div>
 
-      <section id="fileList" class="file-list">
-        <div class="muted">Chưa có tệp nào được chọn</div>
-      </section>
+      <div class="server-response" id="server-response"></div>
+    </div>
+  </main>
 
-      <div id="serverResponse" class="server-response" aria-live="polite"></div>
-    </main>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      const uploadBtn = document.getElementById('upload-btn');
+      const clearBtn = document.getElementById('clear-btn');
+      const fileListEl = document.getElementById('file-list');
+      const serverResponse = document.getElementById('server-response');
 
-    <footer class="site-footer">
-      <div class="container">© FP-term-3</div>
-    </footer>
+      let files = [];
 
-    <script>
-      // upload UI (client-side), POST → /api/upload
-      (function () {
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const fileListEl = document.getElementById('fileList');
-        const serverResponse = document.getElementById('serverResponse');
+      function renderList() {
+        fileListEl.innerHTML = '';
+        if (!files.length) {
+          fileListEl.textContent = 'Chưa có file nào được chọn';
+          return;
+        }
+        files.forEach((it, idx) => {
+          const row = document.createElement('div');
+          row.className = 'file-row';
 
-        let files = [];
+          const name = document.createElement('div');
+          name.style.flex = '1';
+          name.textContent = it.file.name + ' (' + Math.round(it.file.size/1024) + ' KB)';
 
-        function renderList() {
-          fileListEl.innerHTML = '';
-          if (files.length === 0) {
-            fileListEl.innerHTML = '<div class="muted">Chưa có tệp nào được chọn</div>';
-            uploadBtn.disabled = true;
-            clearBtn.disabled = true;
-            return;
-          }
-          uploadBtn.disabled = false;
-          clearBtn.disabled = false;
+          const progressWrap = document.createElement('div');
+          progressWrap.className = 'file-progress';
+          const prog = document.createElement('i');
+          prog.style.width = (it.progress || 0) + '%';
+          progressWrap.appendChild(prog);
 
-          files.forEach((it, idx) => {
-            const row = document.createElement('div');
-            row.className = 'file-row';
+          const status = document.createElement('div');
+          status.style.minWidth = '80px';
+          status.textContent = it.status || 'ready';
 
-            const left = document.createElement('div');
-            left.className = 'file-left';
-
-            const name = document.createElement('div');
-            name.className = 'file-name';
-            name.textContent = it.file.name;
-
-            const size = document.createElement('div');
-            size.className = 'file-size';
-            size.textContent = (it.file.size / 1024).toFixed(1) + ' KB';
-
-            left.appendChild(name);
-            left.appendChild(size);
-
-            const progressWrap = document.createElement('div');
-            progressWrap.className = 'progress-wrap';
-            const progressBar = document.createElement('div');
-            progressBar.className = 'progress-bar';
-            progressBar.style.width = (it.progress || 0) + '%';
-            progressWrap.appendChild(progressBar);
-
-            const status = document.createElement('div');
-            status.className = 'status';
-            if (it.status === 'ready') status.innerHTML = '<span class="tag">Chuẩn bị</span>';
-            else if (it.status === 'uploading') status.innerHTML = '<span class="tag tag-primary">Đang upload ' + (it.progress||0) + '%</span>';
-            else if (it.status === 'done') status.innerHTML = '<span class="tag tag-success">Hoàn thành</span>';
-            else if (it.status === 'error') status.innerHTML = '<span class="tag tag-error">Lỗi: ' + (it.error || '') + '</span>';
-
-            const actions = document.createElement('div');
-            actions.className = 'actions';
-            const delBtn = document.createElement('button');
-            delBtn.className = 'btn-small';
-            delBtn.textContent = 'Xóa';
-            delBtn.disabled = (it.status === 'uploading');
-            delBtn.onclick = () => {
-              if (it.xhr && it.xhr.readyState !== 4) it.xhr.abort();
-              files.splice(idx, 1);
-              renderList();
-            };
-            actions.appendChild(delBtn);
-
-            row.appendChild(left);
-            row.appendChild(progressWrap);
-            row.appendChild(status);
-            row.appendChild(actions);
-            fileListEl.appendChild(row);
+          const actions = document.createElement('div');
+          const removeBtn = document.createElement('button');
+          removeBtn.textContent = 'Xóa';
+          removeBtn.addEventListener('click', () => {
+            if (it.xhr && it.xhr.readyState !== 4) it.xhr.abort();
+            files.splice(idx, 1);
+            renderList();
           });
-        }
+          actions.appendChild(removeBtn);
 
-        function onFilesSelected(list) {
-          const arr = Array.from(list).map((f) => ({
-            file: f,
-            progress: 0,
-            status: 'ready',
-            error: null,
-            xhr: null
-          }));
-          files = files.concat(arr);
-          renderList();
-        }
-
-        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-        dropzone.addEventListener('dragleave', (e) => { dropzone.classList.remove('dragover'); });
-        dropzone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          dropzone.classList.remove('dragover');
-          if (e.dataTransfer && e.dataTransfer.files) onFilesSelected(e.dataTransfer.files);
+          row.appendChild(name);
+          row.appendChild(progressWrap);
+          row.appendChild(status);
+          row.appendChild(actions);
+          fileListEl.appendChild(row);
         });
+      }
 
-        dropzone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => { if (e.target.files) onFilesSelected(e.target.files); e.target.value = ''; });
-
-        uploadBtn.addEventListener('click', () => {
-          serverResponse.textContent = '';
-          if (files.length === 0) return;
-          (async function uploadSequential() {
-            for (let i = 0; i < files.length; i++) {
-              if (files[i].status === 'done') continue;
-              try { await uploadSingle(i); } catch (e) { console.error(e); }
-            }
-          })();
-        });
-
-        clearBtn.addEventListener('click', () => {
-          files.forEach(it => { if (it.xhr && it.xhr.readyState !== 4) it.xhr.abort(); });
-          files = [];
-          serverResponse.textContent = '';
-          renderList();
-        });
-
-        function uploadSingle(index) {
-          return new Promise((resolve) => {
-            const item = files[index];
-            const form = new FormData();
-            form.append('files', item.file);
-
-            const xhr = new XMLHttpRequest();
-            item.xhr = xhr;
-            xhr.open('POST', '/api/upload', true);
-
-            xhr.upload.onprogress = (e) => {
-              if (!e.lengthComputable) return;
-              const percent = Math.round((e.loaded / e.total) * 100);
-              item.progress = percent;
-              item.status = 'uploading';
-              renderList();
-            };
-
-            xhr.onload = function () {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                item.progress = 100;
-                item.status = 'done';
-                try {
-                  const json = JSON.parse(xhr.responseText || '{}');
-                  serverResponse.textContent = (json.message || (json.ok ? 'Upload thành công' : JSON.stringify(json))) ;
-                } catch (e) {
-                  serverResponse.textContent = 'Upload hoàn tất';
-                }
-              } else {
-                item.status = 'error';
-                item.error = xhr.status + ' ' + xhr.statusText;
-                serverResponse.textContent = 'Lỗi khi upload: ' + item.error;
-              }
-              renderList();
-              resolve();
-            };
-
-            xhr.onerror = function () {
-              item.status = 'error';
-              item.error = 'Network error';
-              serverResponse.textContent = 'Lỗi mạng khi upload';
-              renderList();
-              resolve();
-            };
-
-            xhr.onabort = function () {
-              item.status = 'error';
-              item.error = 'Aborted';
-              renderList();
-              resolve();
-            };
-
-            xhr.send(form);
-          });
-        }
-
-        // accessibility
-        dropzone.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
-        });
-
+      function onFilesSelected(list) {
+        const arr = Array.from(list).map((f) => ({
+          file: f,
+          progress: 0,
+          status: 'ready',
+          error: null,
+          xhr: null
+        }));
+        files = files.concat(arr);
         renderList();
-      })();
-    </script>
-  </body>
+      }
+
+      dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+      dropzone.addEventListener('dragleave', (e) => { dropzone.classList.remove('dragover'); });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files) onFilesSelected(e.dataTransfer.files);
+      });
+
+      dropzone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => { if (e.target.files) onFilesSelected(e.target.files); e.target.value = ''; });
+
+      uploadBtn.addEventListener('click', () => {
+        serverResponse.textContent = '';
+        if (files.length === 0) return;
+        (async function uploadSequential() {
+          for (let i = 0; i < files.length; i++) {
+            if (files[i].status === 'done') continue;
+            try { await uploadSingle(i); } catch (e) { console.error(e); }
+          }
+        })();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        files.forEach(it => { if (it.xhr && it.xhr.readyState !== 4) it.xhr.abort(); });
+        files = [];
+        serverResponse.textContent = '';
+        renderList();
+      });
+
+      function uploadSingle(index) {
+        return new Promise((resolve) => {
+          const item = files[index];
+          const form = new FormData();
+          // Send as field name 'file' to match server-side multer.single('file') or our upload.any() fallback
+          form.append('file', item.file);
+
+          const xhr = new XMLHttpRequest();
+          item.xhr = xhr;
+          // NOTE: adjust path if admin router is mounted elsewhere (e.g., '/admin/upload' or '/api/admin/upload')
+          xhr.open('POST', '/api/upload', true);
+          xhr.withCredentials = true;
+
+          xhr.upload.onprogress = (e) => {
+            if (!e.lengthComputable) return;
+            const percent = Math.round((e.loaded / e.total) * 100);
+            item.progress = percent;
+            item.status = 'uploading';
+            renderList();
+          };
+
+          xhr.onload = function () {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              item.progress = 100;
+              item.status = 'done';
+              try {
+                const json = JSON.parse(xhr.responseText || '{}');
+                serverResponse.textContent = (json.message || (json.ok ? 'Upload thành công' : JSON.stringify(json))) ;
+              } catch (e) {
+                serverResponse.textContent = 'Upload hoàn tất';
+              }
+            } else {
+              item.status = 'error';
+              item.error = xhr.status + ' ' + xhr.statusText;
+              serverResponse.textContent = 'Lỗi khi upload: ' + item.error;
+            }
+            renderList();
+            resolve();
+          };
+
+          xhr.onerror = function () {
+            item.status = 'error';
+            item.error = 'Network error';
+            serverResponse.textContent = 'Lỗi mạng khi upload';
+            renderList();
+            resolve();
+          };
+
+          xhr.onabort = function () {
+            item.status = 'error';
+            item.error = 'Aborted';
+            renderList();
+            resolve();
+          };
+
+          xhr.send(form);
+        });
+      }
+
+      // accessibility: Enter/Space triggers file select
+      dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+      });
+
+      // initial render
+      renderList();
+    });
+  </script>
+</body>
 </html>

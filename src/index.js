@@ -114,9 +114,14 @@ try {
   app.use('/api/classes', classSubjectsRouter);
   console.log('Classes router mounted at /api/classes');
 } catch (e) {}
-// CHÈN VÀO src/index.js tại vị trí ngay trước app.get('*') (trước dòng ~124)
+
+/**
+ * IMPORTANT: Mount admin router (if exists) and add API 404 handler
+ * We add the admin router now so /api/admin/* is served by it (if present).
+ * Also ensure that any /api/* not matched by routers returns JSON 404,
+ * not the SPA index.html.
+ */
 try {
-  // Mount admin router if present so /api/admin is available
   const adminRouter = require('./routes/admin');
   app.use('/api/admin', adminRouter);
   console.log('Admin router mounted at /api/admin');
@@ -124,18 +129,13 @@ try {
   console.warn('Admin router not mounted (./routes/admin):', e && (e.message || e));
 }
 
-// API 404 handler: ensure /api/* that don't match return JSON 404 (avoid SPA HTML)
+// API 404 handler: ensure /api/* that don't match route return JSON 404 (avoid SPA HTML)
 app.use((req, res, next) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(404).json({ ok: false, error: `No ${req.method} ${req.originalUrl}` });
   }
   next();
 });
-// API health / ping (useful for tests)
-app.get('/api/ping', (_req, res) => res.json({ ok: true, now: new Date().toISOString() }));
-
-// health check (generic)
-app.get('/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
 // fallback to SPA: must be after API mounts
 app.get('*', (req, res) => {

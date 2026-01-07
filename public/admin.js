@@ -1,14 +1,5 @@
 // public/admin.js
-// Simple admin UI controller. Expects API endpoints under /api/admin or /api:
-// - GET /api/admin/uploads
-// - POST /api/admin/uploads (multipart/form-data)
-// - GET /api/admin/comments
-// - POST /api/admin/comments/:id/approve
-// - DELETE /api/admin/comments/:id
-// - GET /api/admin/users
-// - POST /api/admin/users/:id/role
-// - DELETE /api/admin/users/:id
-// All requests use credentials: 'include' so session cookie is sent.
+// Admin UI controller with grade/subject select and Drive-aware upload.
 
 (function(){
   // helpers
@@ -78,6 +69,28 @@
   const uploadInput = qs('#uploadInput');
   const uploadsList = qs('#uploadsList');
   const refreshUploadsBtn = qs('#refreshUploads');
+  const gradeSelect = qs('#gradeSelect');
+  const subjectSelect = qs('#subjectSelect');
+
+  const SUBJECTS_BY_GRADE = {
+    6: ['Toán','Ngữ văn','Tiếng Anh','Tin học'],
+    7: ['Toán','Ngữ văn','Tiếng Anh','Tin học'],
+    8: ['Toán','Ngữ văn','Tiếng Anh','Tin học'],
+    9: ['Toán','Ngữ văn','Tiếng Anh','Tin học'],
+    10: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học'],
+    11: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học'],
+    12: ['Toán','Ngữ văn','Tiếng Anh','Vật lí','Hóa học','Sinh học','Tin học']
+  };
+
+  function populateSubjectsForGrade(g) {
+    subjectSelect.innerHTML = '<option value="">Môn</option>';
+    if (!g) return;
+    const arr = SUBJECTS_BY_GRADE[g] || [];
+    arr.forEach(s => {
+      const o = document.createElement('option'); o.value = s; o.textContent = s; subjectSelect.appendChild(o);
+    });
+  }
+  gradeSelect && gradeSelect.addEventListener('change', ()=> populateSubjectsForGrade(gradeSelect.value));
 
   async function loadUploads(){
     if (!uploadsList) return;
@@ -85,25 +98,31 @@
     try {
       const r = await api('/api/admin/uploads', { method: 'GET' });
       const txt = await r.text().catch(()=>null);
-      let json = null;
-      try { json = txt ? JSON.parse(txt) : null; } catch(e){ json = null; }
+      let json = null; try { json = txt ? JSON.parse(txt) : null; } catch(e){ json = null; }
       if (!r.ok || !json) {
-        showError(uploadsList, `Không thể tải uploads (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,200)}`);
+        showError(uploadsList, `Không thể tải uploads (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,500)}`);
         return;
       }
-      if (!Array.isArray(json.uploads)) json.uploads = [];
-      // render table
-      if (json.uploads.length === 0) {
+      if (!Array.isArray(json.uploads) || json.uploads.length === 0) {
         uploadsList.innerHTML = '<div class="muted">Chưa có file nào uploaded.</div>';
         return;
       }
       const table = el('table'); const thead = el('thead'); const tbody = el('tbody');
-      thead.innerHTML = '<tr><th>Tên file</th><th>Kích thước</th><th>Ngày</th><th>Hành động</th></tr>';
+      thead.innerHTML = '<tr><th>Tên file</th><th>Loại</th><th>Kích thước</th><th>Ngày</th><th>Hành động</th></tr>';
       json.uploads.forEach(f => {
         const tr = el('tr');
-        const name = el('td'); name.innerHTML = `<a href="/file.html?id=${encodeURIComponent(f.id)}" target="_blank" rel="noopener">${f.name || f.filename}</a>`;
+        const name = el('td');
+        // if path is drive:ID show Drive label; otherwise link to local /uploads path
+        if (f.path && typeof f.path === 'string' && f.path.startsWith('drive:')) {
+          const fileId = f.path.slice('drive:'.length);
+          name.innerHTML = `<a href="/file.html?id=${encodeURIComponent(fileId)}" target="_blank" rel="noopener">${escapeHtml(f.original_name || f.filename)}</a> <span class="muted">(Drive)</span>`;
+        } else {
+          const href = f.path ? f.path : (`/file.html?id=${encodeURIComponent(f.id)}`);
+          name.innerHTML = `<a href="${href}" target="_blank" rel="noopener">${escapeHtml(f.original_name || f.filename)}</a>`;
+        }
+        const mime = el('td', {}, f.mimetype || '-');
         const size = el('td', {}, f.size ? `${Math.round(f.size/1024)} KB` : '-');
-        const date = el('td', {}, f.createdAt ? (new Date(f.createdAt)).toLocaleString() : '-');
+        const date = el('td', {}, f.created_at ? (new Date(f.created_at)).toLocaleString() : '-');
         const actions = el('td'); actions.className = 'actions';
         const del = el('button'); del.className = 'danger'; del.textContent = 'Xoá';
         del.addEventListener('click', async () => {
@@ -117,7 +136,7 @@
           } catch (er) { alert('Lỗi mạng khi xoá'); }
         });
         actions.appendChild(del);
-        tr.appendChild(name); tr.appendChild(size); tr.appendChild(date); tr.appendChild(actions);
+        tr.appendChild(name); tr.appendChild(mime); tr.appendChild(size); tr.appendChild(date); tr.appendChild(actions);
         tbody.appendChild(tr);
       });
       table.appendChild(thead); table.appendChild(tbody);
@@ -134,16 +153,22 @@
       if (!uploadInput || !uploadInput.files || uploadInput.files.length === 0) { alert('Chọn file trước khi upload'); return; }
       const fd = new FormData();
       fd.append('file', uploadInput.files[0]);
+      const grade = gradeSelect ? gradeSelect.value : '';
+      const subject = subjectSelect ? subjectSelect.value : '';
+      if (grade) fd.append('grade', grade);
+      if (subject) fd.append('subject', subject);
       uploadsList.innerHTML = '<div class="muted">Đang upload...</div>';
       try {
         const r = await api('/api/admin/uploads', { method: 'POST', body: fd });
         const txt = await r.text().catch(()=>null);
         let j = null; try { j = txt ? JSON.parse(txt) : null; } catch(e){ j = null; }
-        if (r.ok) {
+        if (r.ok && j && j.ok) {
           uploadInput.value = '';
+          // show success then reload list
+          alert('Upload thành công');
           loadUploads();
         } else {
-          alert('Upload thất bại: ' + (j && (j.error||j.message) ? (j.error||j.message) : (txt || r.status)));
+          alert('Upload thất bại: ' + ((j && (j.error||j.message)) ? (j.error||j.message) : (txt || r.status)));
           loadUploads();
         }
       } catch (err) {
@@ -156,6 +181,10 @@
 
   /* ========== Comments ========== */
   const commentsList = qs('#commentsList');
+  const approveSelectedBtn = qs('#approveSelected');
+  const hideSelectedBtn = qs('#hideSelected');
+  const refreshCommentsBtn = qs('#refreshComments');
+
   async function loadComments(){
     if (!commentsList) return;
     commentsList.innerHTML = 'Đang tải...';
@@ -164,27 +193,29 @@
       const txt = await r.text().catch(()=>null);
       let json = null; try { json = txt ? JSON.parse(txt) : null; } catch(e){ json = null; }
       if (!r.ok || !json) {
-        showError(commentsList, `Không thể tải comments (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,200)}`);
+        showError(commentsList, `Không thể tải comments (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,500)}`);
         return;
       }
       if (!Array.isArray(json.comments) || json.comments.length === 0) {
         commentsList.innerHTML = '<div class="muted">Không có bình luận.</div>'; return;
       }
       const table = el('table'); const thead = el('thead'); const tbody = el('tbody');
-      thead.innerHTML = '<tr><th>Người</th><th>Nội dung</th><th>Ngày</th><th>Hành động</th></tr>';
+      thead.innerHTML = '<tr><th><input id="selectAll" type="checkbox" /></th><th>Người</th><th>Nội dung</th><th>Ngày</th><th>Trạng thái</th><th>Hành động</th></tr>';
       json.comments.forEach(c => {
         const tr = el('tr');
-        tr.appendChild(el('td',{}, c.author || ''));
+        const chkTd = el('td'); const chk = el('input'); chk.type='checkbox'; chk.className='comment-chk'; chk.value = c.id; chkTd.appendChild(chk);
+        tr.appendChild(chkTd);
+        tr.appendChild(el('td',{}, c.username || c.user_id || ''));
         tr.appendChild(el('td',{}, c.content || ''));
-        tr.appendChild(el('td',{}, c.createdAt ? (new Date(c.createdAt)).toLocaleString() : ''));
-        const actions = el('td'); actions.className = 'actions';
-        const approve = el('button'); approve.className='btn ghost'; approve.textContent='Duyệt';
+        tr.appendChild(el('td',{}, c.created_at ? (new Date(c.created_at)).toLocaleString() : ''));
+        tr.appendChild(el('td',{}, c.approved ? 'Đã hiển thị' : 'Đang ẩn'));
+        const actions = el('td'); actions.className='actions';
+        const approve = el('button'); approve.className='btn ghost'; approve.textContent = c.approved ? 'Ẩn' : 'Hiện';
         approve.addEventListener('click', async () => {
+          const newVal = !c.approved;
           try {
-            const rr = await api(`/api/admin/comments/${encodeURIComponent(c.id)}/approve`, { method: 'POST' });
-            if (rr.ok) loadComments(); else {
-              const t = await rr.text().catch(()=>null); alert('Thất bại: ' + (t||rr.status));
-            }
+            const rr = await api(`/api/admin/comments/${encodeURIComponent(c.id)}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ approved: newVal }) });
+            if (rr.ok) loadComments(); else { const t=await rr.text().catch(()=>null); alert('Thất bại: '+(t||rr.status)); }
           } catch(e){ alert('Lỗi mạng'); }
         });
         const del = el('button'); del.className='danger'; del.textContent='Xoá';
@@ -192,9 +223,7 @@
           if (!confirm('Xoá bình luận?')) return;
           try {
             const rr = await api(`/api/admin/comments/${encodeURIComponent(c.id)}`, { method: 'DELETE' });
-            if (rr.ok) loadComments(); else {
-              const t = await rr.text().catch(()=>null); alert('Thất bại: ' + (t||rr.status));
-            }
+            if (rr.ok) loadComments(); else { const t=await rr.text().catch(()=>null); alert('Thất bại: '+(t||rr.status)); }
           } catch(e){ alert('Lỗi mạng'); }
         });
         actions.appendChild(approve); actions.appendChild(del);
@@ -203,13 +232,45 @@
       });
       table.appendChild(thead); table.appendChild(tbody);
       commentsList.innerHTML = ''; commentsList.appendChild(table);
+
+      // select all checkbox
+      const selectAll = qs('#selectAll');
+      if (selectAll) {
+        selectAll.addEventListener('change', (ev) => {
+          qsa('.comment-chk').forEach(cb => cb.checked = !!ev.target.checked);
+        });
+      }
     } catch (err) {
       showError(commentsList, 'Lỗi khi lấy comments: ' + String(err));
     }
   }
 
+  approveSelectedBtn && approveSelectedBtn.addEventListener('click', async () => {
+    const ids = qsa('.comment-chk').filter(c=>c.checked).map(c=>parseInt(c.value,10)).filter(Boolean);
+    if (!ids.length) { alert('Chọn ít nhất 1 bình luận'); return; }
+    if (!confirm(`Hiện ${ids.length} bình luận?`)) return;
+    try {
+      const rr = await api('/api/admin/comments', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids, approved: true }) });
+      if (rr.ok) loadComments(); else { const t=await rr.text().catch(()=>null); alert('Thất bại: '+(t||rr.status)); }
+    } catch(e){ alert('Lỗi mạng'); }
+  });
+
+  hideSelectedBtn && hideSelectedBtn.addEventListener('click', async () => {
+    const ids = qsa('.comment-chk').filter(c=>c.checked).map(c=>parseInt(c.value,10)).filter(Boolean);
+    if (!ids.length) { alert('Chọn ít nhất 1 bình luận'); return; }
+    if (!confirm(`Ẩn ${ids.length} bình luận?`)) return;
+    try {
+      const rr = await api('/api/admin/comments', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ids, approved: false }) });
+      if (rr.ok) loadComments(); else { const t=await rr.text().catch(()=>null); alert('Thất bại: '+(t||rr.status)); }
+    } catch(e){ alert('Lỗi mạng'); }
+  });
+
+  refreshCommentsBtn && refreshCommentsBtn.addEventListener('click', loadComments);
+
   /* ========== Users ========== */
   const usersList = qs('#usersList');
+  const refreshUsersBtn = qs('#refreshUsers');
+
   async function loadUsers(){
     if (!usersList) return;
     usersList.innerHTML = 'Đang tải...';
@@ -218,7 +279,7 @@
       const txt = await r.text().catch(()=>null);
       let json = null; try { json = txt ? JSON.parse(txt) : null; } catch(e){ json = null; }
       if (!r.ok || !json) {
-        showError(usersList, `Không thể tải users (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,200)}`);
+        showError(usersList, `Không thể tải users (status ${r.status}). Response bắt đầu: ${String((txt||'')).slice(0,500)}`);
         return;
       }
       if (!Array.isArray(json.users) || json.users.length === 0) {
@@ -259,10 +320,20 @@
     }
   }
 
+  refreshUsersBtn && refreshUsersBtn.addEventListener('click', loadUsers);
+
   // initial load for active panel (uploads)
   loadUploads();
 
   // expose functions for debugging
   window.__admin = { loadUploads, loadComments, loadUsers };
+
+  // utility for escaping HTML used above
+  function escapeHtml(s) {
+    if (s === undefined || s === null) return '';
+    return String(s).replace(/[&<>"']/g, function (m) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+    });
+  }
 
 })();
