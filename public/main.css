@@ -25,6 +25,10 @@
   --transition-fast: 200ms;
   --transition-med: 350ms;
   --transition-slow: 500ms;
+
+  /* pill width: change here if you want different fixed size (default 60px).
+     If you prefer percentage, set e.g. --pill-width: 60%; */
+  --pill-width: 60px;
 }
 
 /* Reset & base */
@@ -290,7 +294,6 @@ a:hover::after {
   background: linear-gradient(135deg, var(--primary), var(--accent));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   opacity: 0;
   transition: opacity var(--transition-med) ease;
@@ -481,6 +484,66 @@ a:hover::after {
   transform: translateY(-2px) scale(1.02);
 }
 
+/* === New: combined-grid support (compatible with your existing styles) ===
+   This block implements fixed-width pill cells (var(--pill-width)) and styles
+   for pills inside .combined-grid without overriding your .file-grid-pill animations.
+   It is intentionally minimal and safe.
+*/
+.combined-grid{
+  display: grid;
+  gap: 12px;
+  /* fixed cell width: each cell min/max = --pill-width */
+  grid-template-columns: repeat(auto-fill, minmax(var(--pill-width), var(--pill-width)));
+  width: 100%;
+  align-items: center;
+  justify-content: start;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
+/* make each pill fit the cell and inherit your btn-file look */
+.combined-grid > a,
+.combined-grid > .btn-file {
+  display: block;
+  width: calc(var(--pill-width) - 8px);
+  padding: 8px 6px;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 10px 28px rgba(99,102,241,0.12);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
+}
+
+/* hover for combined grid pills */
+.combined-grid > a:hover,
+.combined-grid > .btn-file:hover {
+  transform: translateY(-4px);
+  filter: brightness(1.03);
+  box-shadow: 0 20px 50px rgba(99,102,241,0.18);
+}
+
+/* ensure compatibility if subject-links or other scripts generate file-grid items */
+.file-grid, .file-grid-item {
+  box-sizing: border-box;
+}
+
+/* small screens: increase pill width for readability */
+@media(max-width:720px){
+  :root{ --pill-width: 120px; }
+  .combined-grid { grid-template-columns: repeat(auto-fill, minmax(var(--pill-width), 1fr)); }
+  .combined-grid > a { font-size:13px; width: calc(var(--pill-width) - 8px); }
+  .file-grid-pill .btn-file{padding:10px 16px;font-size:14px}
+}
+
 /* Focus states với gradient outline */
 .btn-file:focus, .subject-list li a:focus, .logo:focus, input:focus, button:focus {
   outline: 3px solid rgba(99,102,241,0.3);
@@ -563,7 +626,6 @@ a:hover::after {
   .subject-list li{font-size:14px;padding:12px;height:52px}
   .header-search{display:none}
   .logo{font-size:20px}
-  .file-grid-pill .btn-file{padding:10px 16px;font-size:14px}
 }
 
 /* Reduced motion */
