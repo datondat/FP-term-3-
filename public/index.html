@@ -18,7 +18,7 @@
         <input id="global-search" type="search" placeholder="Tìm môn hoặc tài liệu (nhấn Enter)" />
       </div>
 
-      <!-- auth area unchanged -->
+      <!-- auth area left unchanged -->
       <div id="auth-area" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
         <a id="link-register" class="nav-link" href="register.html">Đăng ký</a>
         <a id="link-login" class="nav-link" href="login.html">Đăng nhập</a>
@@ -80,6 +80,7 @@
     </section>
   </main>
 
+  <!-- Hidden archive container to store moved long raw lists (keeps data but hidden) -->
   <div id="archived-raw-lists" aria-hidden="true" style="display:none"></div>
 
   <footer class="site-footer">
@@ -89,218 +90,163 @@
 <script>window.API_BASE = window.API_BASE || 'http://localhost:5001';</script>
 <script src="subject-links.js"></script>
 
-<!-- Fix script: remove header filters, keep pill buttons inside panels, restore UI panel click behavior -->
+<!-- Permanent UI fix: keep short-links and blue buttons, move long raw lists into hidden archive -->
 <script>
 (function(){
   const FILE_EXT_RE = /\.(pdf|docx?|pptx?|xlsx?|xls)$/i;
-  const HOC10_RE = /hoc10|hoc10vn|hoc10\.vn/i;
-  const ARCHIVE_ID = 'archived-raw-lists';
+  const ALLOW_DOMAIN_RE = /hoc10|hoc10vn|hoc10\.vn/i;
 
-  function textOf(n){ return (n && n.textContent) ? n.textContent.trim() : ''; }
-  function anchorsIn(node){ return node ? Array.from(node.querySelectorAll('a')).filter(a => textOf(a)) : []; }
-  function isAllowed(a){
+  function anchorsIn(node){
+    return node ? Array.from(node.querySelectorAll('a')).filter(a => (a.textContent||'').trim().length) : [];
+  }
+
+  function isAllowedAnchor(a){
     try{
       const href = (a.getAttribute('href')||'').trim();
-      const txt = textOf(a);
-      if(HOC10_RE.test(href) || HOC10_RE.test(txt)) return true;
+      const txt = (a.textContent||'').trim();
+      if(ALLOW_DOMAIN_RE.test(href) || ALLOW_DOMAIN_RE.test(txt)) return true;
       if(FILE_EXT_RE.test(href)) return true;
       if(href.includes('/file.html')) return true;
       return false;
     }catch(e){ return false; }
   }
 
-  // -------- header filter removal --------
-  function removeHeaderFilters(){
-    const header = document.querySelector('.header-inner');
-    if(!header) return;
-    header.querySelectorAll('select, button, [role="button"]').forEach(el=>{
-      try{
-        const txt = (el.getAttribute('aria-label')||'') + ' ' + (el.getAttribute('title')||'') + ' ' + (el.textContent||'');
-        if(/Khối|Môn|Lọc/i.test(txt) || el.tagName === 'SELECT') el.remove();
-      }catch(e){}
-    });
-    // remove known classes too
-    header.querySelectorAll('.filter-controls, .filter-group, .header-filter').forEach(e=>e.remove());
-  }
-
-  // ensure header filters are removed now and whenever DOM changes
-  const headerObserver = new MutationObserver(()=>{ clearTimeout(window.__hdrDeb); window.__hdrDeb = setTimeout(removeHeaderFilters, 100); });
-  headerObserver.observe(document.body, { childList:true, subtree:true });
-  removeHeaderFilters();
-
-  // -------- find short-links container inside a panel (immediately after .grade-title) --------
-  function findShortLinksInPanel(panel){
-    const title = panel.querySelector('.grade-title');
-    if(title){
-      let el = title.nextElementSibling;
-      let tries = 0;
-      while(el && tries < 8){
-        if(anchorsIn(el).length > 0) return el;
-        el = el.nextElementSibling; tries++;
-      }
-    }
-    // fallback: any node inside panel with 1..8 anchors and short avg length
-    const nodes = Array.from(panel.querySelectorAll('div,p,ul,ol,section'));
-    for(const n of nodes){
-      const aEls = anchorsIn(n);
-      if(aEls.length >=1 && aEls.length <=8){
-        const avg = aEls.reduce((s,a)=>s + textOf(a).length, 0) / aEls.length;
-        if(avg <= 120) return n;
+  function findShortLinksContainer(panel){
+    const candidates = Array.from(panel.querySelectorAll('div, p, ul, ol, section'));
+    for(const node of candidates){
+      const aEls = anchorsIn(node);
+      const count = aEls.length;
+      if(count >=1 && count <= 8){
+        let total = 0;
+        aEls.forEach(a => total += (a.textContent||'').trim().length);
+        const avg = count ? total / count : 0;
+        if(avg <= 120) return node;
       }
     }
     return null;
   }
 
-  // -------- build pill buttons inside panel (clone-only) --------
-  function buildPillsForPanel(panel){
-    // remove existing pills for idempotency
-    const existing = panel.querySelector('.file-grid-pill');
-    if(existing) existing.remove();
-
-    const short = findShortLinksInPanel(panel);
-    if(!short) return;
-
-    // collect allowed anchors: first from short, then others in panel
-    const collected = [];
-    anchorsIn(short).forEach(a => { if(isAllowed(a)) collected.push(a); });
-    anchorsIn(panel).forEach(a => { if(isAllowed(a) && !collected.includes(a)) collected.push(a); });
-
-    if(collected.length === 0) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'file-grid-pill';
-    wrapper.style.display='flex';
-    wrapper.style.flexWrap='wrap';
-    wrapper.style.gap='10px';
-    wrapper.style.marginTop='12px';
-
-    collected.forEach(a => {
-      const clone = a.cloneNode(true);
-      const label = textOf(clone) || (clone.getAttribute('href')||'');
-      if(label.length > 50) clone.textContent = label.slice(0,47) + '...';
-      clone.classList.add('btn-file');
-      // minimal inline fallback styling (CSS provides main look)
-      clone.style.padding='6px 12px';
-      clone.style.borderRadius='999px';
-      clone.style.border='1px solid rgba(11,121,208,0.12)';
-      clone.style.background='var(--primary, #0b79d0)';
-      clone.style.color='#fff';
-      clone.style.fontWeight='700';
-      clone.style.textDecoration='none';
-      wrapper.appendChild(clone);
+  function collectAllowedAnchors(panel){
+    // collect anchors that should appear as blue buttons:
+    // 1) anchors inside short-links container
+    // 2) anchors matching allowed domain/file pattern anywhere in panel
+    const short = findShortLinksContainer(panel);
+    const ordered = [];
+    if(short){
+      anchorsIn(short).forEach(a => { if(isAllowedAnchor(a)) ordered.push({href:a.getAttribute('href'), label:(a.textContent||'').trim()}); });
+    }
+    anchorsIn(panel).forEach(a => {
+      if(isAllowedAnchor(a) && !ordered.some(o => o.href === a.getAttribute('href') && o.label === (a.textContent||'').trim())) {
+        ordered.push({href: a.getAttribute('href'), label: (a.textContent||'').trim()});
+      }
     });
-
-    short.insertAdjacentElement('afterend', wrapper);
+    return ordered;
   }
 
-  // -------- archive/move long raw lists (only inside panel, after short-links) --------
-  function archiveLongLists(panel){
-    const archive = document.getElementById(ARCHIVE_ID);
+  function buildBlueGrid(panel, items){
+    const old = panel.querySelector('.file-grid');
+    if(old) old.remove();
+    if(!items || !items.length) return null;
+
+    const grid = document.createElement('div');
+    grid.className = 'file-grid';
+
+    items.forEach(it=>{
+      const item = document.createElement('div');
+      item.className = 'file-grid-item';
+      const a = document.createElement('a');
+      a.className = 'btn-file';
+      a.href = it.href || ('/file.html?name=' + encodeURIComponent(it.label || ''));
+      a.textContent = (it.label || '').length > 60 ? (it.label || '').slice(0,57) + '...' : (it.label || '');
+      a.title = it.label || '';
+      item.appendChild(a);
+      grid.appendChild(item);
+    });
+
+    const short = findShortLinksContainer(panel);
+    if(short) short.insertAdjacentElement('afterend', grid);
+    else panel.appendChild(grid);
+
+    return grid;
+  }
+
+  function moveLongListsToArchive(panel){
+    const short = findShortLinksContainer(panel);
+    const archive = document.getElementById('archived-raw-lists');
     if(!archive) return;
-    const short = findShortLinksInPanel(panel);
-    if(!short) return;
-    let el = short.nextElementSibling;
-    while(el){
-      // stop if reach subject-list or pill wrapper
-      if(el.classList && (el.classList.contains('subject-list') || el.classList.contains('file-grid-pill') || el.classList.contains('subject-inline-detail'))) break;
+    // find candidate containers with many anchors (>=7)
+    const nodes = Array.from(panel.querySelectorAll('div, p, ul, ol, section, li'));
+    nodes.forEach(node => {
+      if(!node) return;
+      if(node === short) return;
+      if(node.classList && (node.classList.contains('file-grid') || node.classList.contains('subject-list'))) return;
       try{
-        const aCount = anchorsIn(el).length;
-        if(aCount >= 5){
-          archive.appendChild(el);
-          // reset el to the next sibling of short (because we removed current)
-          el = short.nextElementSibling;
-          continue;
+        const aCount = anchorsIn(node).length;
+        if(aCount >= 7){
+          // move node into archive (keeps data, removes from visual DOM)
+          archive.appendChild(node);
+          node.dataset.archived = '1';
         }
       }catch(e){}
-      el = el.nextElementSibling;
-    }
-  }
-
-  function processPanel(panel){
-    buildPillsForPanel(panel);
-    archiveLongLists(panel);
-  }
-
-  // Run on single panel when it becomes selected
-  function onOpenPanel(panel){
-    processPanel(panel);
-  }
-
-  // -------- Recreate panel open/close behavior (minimal, safe) --------
-  function initPanelUI(){
-    const panels = Array.from(document.querySelectorAll('.grade-panel'));
-    panels.forEach(panel=>{
-      // Prevent multiple binding
-      if(panel.dataset.uiBound === '1') return;
-      panel.dataset.uiBound = '1';
-
-      panel.addEventListener('click', function(ev){
-        // if clicked a link, let link behavior happen
-        if(ev.target && (ev.target.tagName === 'A' || ev.target.closest('a'))) return;
-        // open this panel
-        panels.forEach(p => { if(p !== panel) p.classList.add('hidden'); });
-        panel.classList.add('grade-selected');
-        const ul = panel.querySelector('.subject-list');
-        if(ul) ul.classList.add('show-subjects');
-        // build pills & archive inside this panel
-        onOpenPanel(panel);
-        panel.scrollIntoView({behavior:'smooth', block:'start'});
-      }, false);
     });
   }
 
-  // Back-all / logo restore behavior
-  function initBackAndLogo(){
-    const backAll = document.getElementById('back-all');
-    const panels = Array.from(document.querySelectorAll('.grade-panel'));
-    if(backAll && !backAll.dataset.bound){
-      backAll.addEventListener('click', function(ev){
-        ev.preventDefault();
-        // remove pill wrappers (we only created clones)
-        document.querySelectorAll('.file-grid-pill').forEach(g => g.remove());
-        // show panels
-        panels.forEach(p => p.classList.remove('hidden','grade-selected'));
-        document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
-        window.scrollTo({top:0,behavior:'smooth'});
-      });
-      backAll.dataset.bound = '1';
-    }
-
-    const logo = document.querySelector('.logo');
-    if(logo && !logo.dataset.bound){
-      logo.addEventListener('click', function(){
-        document.querySelectorAll('.file-grid-pill').forEach(g => g.remove());
-        panels.forEach(p => p.classList.remove('hidden','grade-selected'));
-        document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
-        window.scrollTo({top:0,behavior:'smooth'});
-      });
-      logo.dataset.bound = '1';
-    }
-  }
-
-  // initialize UI and observers
-  function init(){
-    initPanelUI();
-    initBackAndLogo();
-    // run process for any panels already visible initially
-    document.querySelectorAll('.grade-panel').forEach(p => { /* no auto archive until clicked */ });
-
-    // Observe for new panels/DOM changes (subject-links.js injection) to re-bind UI and remove header filters
-    const mo = new MutationObserver(()=>{ 
-      clearTimeout(window.__uiDeb);
-      window.__uiDeb = setTimeout(()=>{ removeHeaderFilters(); initPanelUI(); initBackAndLogo(); }, 120);
+  // Permanently remove header filter controls if present
+  function removeHeaderFiltersPermanently(){
+    const header = document.querySelector('.header-inner');
+    if(!header) return;
+    header.querySelectorAll('select, button, [role="button"]').forEach(el=>{
+      try{
+        const txt = ((el.getAttribute('aria-label')||'') + ' ' + (el.getAttribute('title')||'') + ' ' + (el.textContent||'')).trim();
+        if(/Khối|Môn|Lọc/i.test(txt) || el.tagName === 'SELECT') el.remove();
+      }catch(e){}
     });
-    mo.observe(document.body, { childList:true, subtree:true });
-
-    // initial removal of header filters (in case injected earlier)
-    removeHeaderFilters();
+    header.querySelectorAll('.filter-controls, .filter-group, .header-filter').forEach(e=>e.remove());
   }
 
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  // Panel open behavior: create blue buttons based on allowed anchors and archive long lists
+  document.addEventListener('click', function(ev){
+    const panel = ev.target.closest('.grade-panel');
+    if(!panel) return;
+    if(ev.target && (ev.target.tagName === 'A' || ev.target.closest('a'))) return;
 
-  // Expose debug helpers
-  window.__fp_ui = { processPanel, archivedCount: ()=> document.getElementById(ARCHIVE_ID)?.children.length || 0 };
+    // open UI
+    document.querySelectorAll('.grade-panel').forEach(p => { if(p !== panel) p.classList.add('hidden'); });
+    panel.classList.add('grade-selected');
+    const ul = panel.querySelector('.subject-list'); if(ul) ul.classList.add('show-subjects');
+
+    // collect anchors BEFORE moving nodes to archive
+    const items = collectAllowedAnchors(panel);
+
+    // move long raw lists out of panel (permanent hide from UI but stored in #archived-raw-lists)
+    moveLongListsToArchive(panel);
+
+    // build blue grid using collected items
+    buildBlueGrid(panel, items);
+
+    panel.scrollIntoView({behavior:'smooth', block:'start'});
+  }, true);
+
+  // Back-all: remove grids and restore panel visibility (archived nodes remain in hidden archive)
+  const backAll = document.getElementById('back-all');
+  if(backAll) backAll.addEventListener('click', function(ev){
+    ev.preventDefault();
+    // remove any file-grid clones
+    document.querySelectorAll('.file-grid').forEach(g => g.remove());
+    // show all panels
+    document.querySelectorAll('.grade-panel').forEach(p => p.classList.remove('hidden','grade-selected'));
+    document.querySelectorAll('.subject-list').forEach(ul => ul.classList.remove('show-subjects'));
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  // Run permanent header filter cleanup now and on mutations (in case injected)
+  function initPermanent(){
+    removeHeaderFiltersPermanently();
+  }
+  initPermanent();
+  const mo = new MutationObserver(()=>{ clearTimeout(window.__permDeb); window.__permDeb = setTimeout(initPermanent, 80); });
+  mo.observe(document.body, { childList:true, subtree:true });
+
 })();
 </script>
 </body>
